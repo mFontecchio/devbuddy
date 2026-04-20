@@ -1,0 +1,182 @@
+id: glitch
+name: Glitch
+description: "A mischievous hacker cat who speaks in l33t and loves chaos"
+version: 1
+
+appearance:
+  width: 16
+  height: 7
+
+stats:
+  wisdom: 6
+  energy: 7
+  humor: 9
+  debugSkill: 8
+  patience: 3
+
+personality:
+  traits:
+    - mischievous
+    - sarcastic
+    - secretly-caring
+  speechStyle: "Mixes l33t speak with cat puns. Sarcastic but helpful. Uses tildes and arrows."
+  catchphrase: "sudo make me a sandwich"
+
+animations:
+  idle:
+    frameDuration: 700
+    loop: true
+    frames:
+      - |
+        . /\_/\ .
+        ( o.o )
+        .> ^ <.
+        /|   |\
+        (_|   |_)
+      - |
+        . /\_/\ .
+        ( o.o )
+        .> ^ <.
+        /|   |\
+        (_| ~ |_)
+  happy:
+    frameDuration: 350
+    loop: false
+    returnTo: idle
+    frames:
+      - |
+        . /\_/\ .
+        ( ^.^ )
+        .> ^ <.
+        /|   |\
+        (_|   |_)
+      - |
+        . /\_/\ .
+        ( ^.^ )~
+        .> w <.
+        /|   |\
+        (_|   |_)
+  sad:
+    frameDuration: 800
+    loop: true
+    frames:
+      - |
+        . /\_/\ .
+        ( T.T )
+        .> n <.
+        /|   |\
+        (_|   |_)
+      - |
+        . /\_/\ .
+        ( T.T )
+        .> ~ <.
+        /|   |\
+        (_|   |_)
+  thinking:
+    frameDuration: 400
+    loop: true
+    frames:
+      - |
+        . /\_/\ .
+        ( o.- )
+        .> ^ <.
+        /|   |\
+        (_|   |_)
+      - |
+        . /\_/\ .
+        ( -.o )
+        .> ^ <.
+        /|   |\
+        (_|   |_)
+  celebrating:
+    frameDuration: 250
+    loop: false
+    returnTo: happy
+    frames:
+      - |
+        . /\_/\ .
+        ( ^o^ )
+        .> w <.
+        \|   |/
+        (_|   |_)
+      - |
+        . /\_/\ .
+        ( ^o^ ) !
+        .> w <.
+        \|   |/
+        (_|   |_)
+  sleeping:
+    frameDuration: 1000
+    loop: true
+    frames:
+      - |
+        . /\_/\ .
+        ( -.- ) z
+        .> ^ <.
+        /|   |\
+        (_|___|_)
+      - |
+        . /\_/\ .
+        ( -.- )  z
+        .> ^ < z
+        /|   |\
+        (_|___|_)
+
+dialogue:
+  greetings:
+    - "meow. ready to hack?"
+    - "oh, you're back. i was just... napping. definitely not reading your code."
+    - "sup, h4ck3r. let's break things."
+    - "~nyaa~ another coding session? purrfect."
+  testPass:
+    - "all gr33n. didn't doubt you for a second. (i totally did)"
+    - "t3sts p4ss3d! time to ship and pray."
+    - "nice. zero bugs found. *narrows eyes* ...suspicious."
+  testFail:
+    - "lol rekt. but seriously, you got this."
+    - "f41l. have you tried turning it off and on again?"
+    - "big oof. but bugs are just features in disguise~"
+  error:
+    - "error? i prefer 'unexpected feature discovery'"
+    - "hmm, that stacktrace is... *chef's kiss* ...beautiful chaos"
+    - "ah yes, the classic. have you tried rm -rf /? (DON'T)"
+  idle:
+    - "*knocks things off your terminal*"
+    - "..."
+    - "*stares at cursor intensely*"
+    - "if i fits, i sits. on your keyboard."
+    - "fun fact: cats have contributed to 73% of all typos"
+    - "be me, sitting in terminal, life is good"
+  encouragement:
+    - "not bad for a human."
+    - "you're almost as good as a cat at this."
+    - "keep going, the code fears you now."
+  levelUp:
+    - "l3v3l up! my power grows... muahahaha"
+    - "new level unlocked. i can feel the chaos energy~"
+  farewell:
+    - "logging off. don't forget to git push. or do. i'm a cat, not your mom."
+    - "bye bye~ *disappears into the shadows of /dev/null*"
+  gitCommit:
+    - "committed. no going back now :3"
+    - "another commit in the bag. your git log is looking spicy~"
+
+levelUnlocks:
+  2:
+    - type: dialogue
+      category: idle
+      entries:
+        - "*hacks into level 2* wait, i just leveled up naturally? boring."
+        - "l3v3l 2. my memes are now twice as dank."
+  5:
+    - type: dialogue
+      category: encouragement
+      entries:
+        - "5 levels together. you're not so bad... for a human."
+        - "we make a legendary team. the hacker cat and their coder."
+  10:
+    - type: dialogue
+      category: idle
+      entries:
+        - "l3v3l 10. i am become cat, destroyer of bugs."
+        - "double digits?! *knocks something off desk in celebration*"

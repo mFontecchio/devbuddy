@@ -1,0 +1,89 @@
+# devBuddy - Custom Buddy Template
+# Copy this file and fill in your buddy's details.
+# Place it in the buddies/ directory or a custom directory.
+
+id: my-buddy          # Lowercase alphanumeric with hyphens only
+name: My Buddy
+description: "A brief description of your buddy"
+version: 1
+
+appearance:
+  width: 16           # Max character width of ASCII art
+  height: 7           # Max line count of ASCII art
+
+# Stats range from 1-10
+stats:
+  wisdom: 5
+  energy: 5
+  humor: 5
+  debugSkill: 5
+  patience: 5
+
+personality:
+  traits:
+    - friendly
+  speechStyle: "Describe how your buddy talks."
+  catchphrase: "Something catchy!"
+
+# Animations - 'idle' is required, others are optional
+# Available states: idle, happy, sad, thinking, celebrating, sleeping
+animations:
+  idle:
+    frameDuration: 600  # ms per frame
+    loop: true
+    frames:
+      - |
+        Your ASCII
+        art here
+      - |
+        Second frame
+        of animation
+
+  happy:
+    frameDuration: 400
+    loop: false
+    returnTo: idle      # After play-once, return to this state
+    frames:
+      - |
+        Happy frame
+
+# Dialogue categories - 'greetings' is required
+dialogue:
+  greetings:
+    - "Hello!"
+  testPass:
+    - "Tests passed!"
+  testFail:
+    - "Tests failed..."
+  error:
+    - "An error occurred."
+  idle:
+    - "Just chillin."
+  encouragement:
+    - "Keep going!"
+  levelUp:
+    - "Level up!"
+  farewell:
+    - "Goodbye!"
+  gitCommit:
+    - "Nice commit!"
+
+# Optional: unlocks at specific levels
+levelUnlocks:
+  2:
+    - type: dialogue
+      category: idle
+      entries:
+        - "New dialogue at level 2!"
+  5:
+    - type: animation
+      name: dancing
+      definition:
+        frameDuration: 300
+        loop: false
+        returnTo: idle
+        frames:
+          - |
+            Dance frame 1
+          - |
+            Dance frame 2

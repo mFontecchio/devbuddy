@@ -1,0 +1,66 @@
+{
+  "name": "devbuddy",
+  "version": "0.2.0",
+  "description": "An animated ASCII coding companion that lives in your terminal",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "devbuddy": "dist/devbuddy.js"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsx bin/devbuddy.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/ bin/ --ext .ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "terminal",
+    "cli",
+    "ascii",
+    "companion",
+    "coding",
+    "pet",
+    "buddy"
+  ],
+  "author": "Michael Fontecchio",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "dist",
+    "buddies",
+    "src/hooks"
+  ],
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "commander": "^14.0.3",
+    "conf": "^15.1.0",
+    "ink": "^6.8.0",
+    "ink-text-input": "^6.0.0",
+    "react": "^19.2.4",
+    "string-width": "^8.2.0",
+    "strip-ansi": "^7.2.0",
+    "yaml": "^2.8.3",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "@types/react": "^19.2.14",
+    "@typescript-eslint/eslint-plugin": "^8.58.0",
+    "@typescript-eslint/parser": "^8.58.0",
+    "eslint": "^10.1.0",
+    "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.2"
+  }
+}

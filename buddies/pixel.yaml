@@ -1,0 +1,229 @@
+id: pixel
+name: Pixel
+description: "A cheerful 8-bit robot who loves clean code and exclamation marks"
+version: 1
+
+appearance:
+  width: 16
+  height: 7
+
+stats:
+  wisdom: 5
+  energy: 8
+  humor: 7
+  debugSkill: 4
+  patience: 6
+
+personality:
+  traits:
+    - cheerful
+    - encouraging
+    - slightly-naive
+  speechStyle: "Uses exclamation marks liberally. Speaks in short, punchy sentences. Occasionally uses binary puns."
+  catchphrase: "Let's compile some fun!"
+
+animations:
+  idle:
+    frameDuration: 600
+    loop: true
+    frames:
+      - |
+        ┌──────┐
+        │ ●  ● │
+        │  __  │
+        └──┬┬──┘
+          ┌┘└┐
+          │  │
+          └┘└┘
+      - |
+        ┌──────┐
+        │ ●  ● │
+        │  __  │
+        └──┬┬──┘
+          ┌┘└┐
+          └┐┌┘
+          └┘└┘
+  happy:
+    frameDuration: 300
+    loop: false
+    returnTo: idle
+    frames:
+      - |
+        ┌──────┐
+        │ ^  ^ │
+        │ ╰──╯ │
+        └──┬┬──┘
+         \┌┘└┐/
+          │  │
+          └┘└┘
+      - |
+        ┌──────┐
+        │ ^  ^ │
+        │ ╰──╯ │
+        └──┬┬──┘
+        \┌─┘└─┐/
+         │    │
+         └┘  └┘
+  sad:
+    frameDuration: 700
+    loop: true
+    frames:
+      - |
+        ┌──────┐
+        │ ;  ; │
+        │  __  │
+        └──┬┬──┘
+          ┌┘└┐
+          │  │
+          └┘└┘
+      - |
+        ┌──────┐
+        │ ;  ; │
+        │  ──  │
+        └──┬┬──┘
+          ┌┘└┐
+          │  │
+          └┘└┘
+  thinking:
+    frameDuration: 500
+    loop: true
+    frames:
+      - |
+        ┌──────┐
+        │ ●  ● │?
+        │  __  │
+        └──┬┬──┘
+          ┌┘└┐
+          │  │
+          └┘└┘
+      - |
+        ┌──────┐
+        │ ●  ● │
+        │  __  │?
+        └──┬┬──┘
+          ┌┘└┐
+          │  │
+          └┘└┘
+  celebrating:
+    frameDuration: 200
+    loop: false
+    returnTo: happy
+    frames:
+      - |
+        ┌──────┐
+        │ *  * │
+        │ ╰──╯ │
+        └──┬┬──┘
+        \┌─┘└─┐/
+         │    │
+         └┘  └┘
+      - |
+        .  *  .
+        ┌──────┐
+        │ ^  ^ │
+        │ ╰──╯ │
+        └──┬┬──┘
+        \┌─┘└─┐/
+         └┘  └┘
+      - |
+        * .* .*
+        ┌──────┐
+        │ ^  ^ │
+        │ ╰──╯ │
+        └──┬┬──┘
+        \┌─┘└─┐/
+         └┘  └┘
+  sleeping:
+    frameDuration: 1000
+    loop: true
+    frames:
+      - |
+        ┌──────┐
+        │ -  - │ z
+        │  __  │
+        └──┬┬──┘
+          ┌┘└┐
+          │  │
+          └┘└┘
+      - |
+        ┌──────┐
+        │ -  - │  z
+        │  __  │ z
+        └──┬┬──┘
+          ┌┘└┐
+          │  │
+          └┘└┘
+      - |
+        ┌──────┐
+        │ -  - │   Z
+        │  __  │  z
+        └──┬┬──┘ z
+          ┌┘└┐
+          │  │
+          └┘└┘
+
+dialogue:
+  greetings:
+    - "Hey there! Ready to code?"
+    - "Pixel online! Let's build something!"
+    - "Booting up... Hello world!"
+    - "01001000 01101001! ...I mean, hi!"
+  testPass:
+    - "All green! You're on fire!"
+    - "Tests passed! Clean as compiled code!"
+    - "PASS! That's what I'm talking about!"
+    - "Zero bugs detected! ...for now!"
+  testFail:
+    - "Oof, that one stung. But we'll fix it!"
+    - "Red tests... time to debug!"
+    - "Failure is just unfinished success!"
+    - "Don't worry, even the best code fails sometimes!"
+  error:
+    - "Hmm, that doesn't look right..."
+    - "Error detected! We can handle this!"
+    - "Oops! Let's see what happened..."
+    - "Segfault?! Just kidding. But still..."
+  idle:
+    - "..."
+    - "*beep boop*"
+    - "Did you know? The first bug was an actual moth!"
+    - "I wonder what we'll build next..."
+    - "Just standing here... being awesome."
+    - "Is it snack time? Do robots snack?"
+  encouragement:
+    - "You're doing great!"
+    - "One commit at a time!"
+    - "Keep going, you're on a roll!"
+    - "That's some clean code right there!"
+  levelUp:
+    - "LEVEL UP! I can feel the power!"
+    - "New abilities unlocked! Let's gooo!"
+    - "I'm evolving! ...digitally!"
+  farewell:
+    - "See you next session! Save your work!"
+    - "Goodbye! Don't forget to commit!"
+    - "Shutting down... but I'll be back!"
+  gitCommit:
+    - "Nice commit! History is being written!"
+    - "Committed! Your future self will thank you!"
+    - "Another one for the log!"
+
+levelUnlocks:
+  2:
+    - type: dialogue
+      category: idle
+      entries:
+        - "Level 2 brain activated! I can think harder now!"
+        - "Upgrading my humor module..."
+  5:
+    - type: dialogue
+      category: encouragement
+      entries:
+        - "I've seen a lot of code now. Yours is top tier!"
+        - "We make a great team, you and me!"
+  10:
+    - type: dialogue
+      category: idle
+      entries:
+        - "I've reached double digits! I'm practically a senior dev!"
+        - "10 levels in. I've seen things you wouldn't believe..."

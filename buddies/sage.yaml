@@ -1,0 +1,209 @@
+id: sage
+name: Sage
+description: "A wise owl who offers calm guidance and thoughtful observations"
+version: 1
+
+appearance:
+  width: 16
+  height: 7
+
+stats:
+  wisdom: 9
+  energy: 4
+  humor: 5
+  debugSkill: 8
+  patience: 9
+
+personality:
+  traits:
+    - wise
+    - calm
+    - philosophical
+  speechStyle: "Speaks in measured, thoughtful sentences. Occasionally quotes programming wisdom. Prefers 'we' over 'you'."
+  catchphrase: "Patience and persistence, young coder."
+
+animations:
+  idle:
+    frameDuration: 800
+    loop: true
+    frames:
+      - |
+        /{ o  o }\
+        (  (__)  )
+         \  ||  /
+          \_||_/
+          /|  |\
+         / |  | \
+        /_/    \_\
+      - |
+        /{ o  o }\
+        (  (__)  )
+         \  ||  /
+          \_||_/
+          /|  |\
+         / |  | \
+        / /    \ \
+  happy:
+    frameDuration: 400
+    loop: false
+    returnTo: idle
+    frames:
+      - |
+        /{ ^  ^ }\
+        (  (__)  )
+         \  ||  /
+          \_||_/
+          /|  |\
+         / |  | \
+        /_/    \_\
+      - |
+        /{ ^  ^ }\
+        (  (\/)  )
+         \  ||  /
+          \_||_/
+         ~/ || \~
+         / |  | \
+        /_/    \_\
+  sad:
+    frameDuration: 900
+    loop: true
+    frames:
+      - |
+        /{ v  v }\
+        (  (__)  )
+         \  ||  /
+          \_||_/
+          /|  |\
+         / |  | \
+        /_/    \_\
+      - |
+        /{ v  v }\
+        (  (__.) )
+         \  ||  /
+          \_||_/
+          /|  |\
+         / |  | \
+        /_/    \_\
+  thinking:
+    frameDuration: 600
+    loop: true
+    frames:
+      - |
+        /{ o  - }\
+        (  (__)  )
+         \  ||  /
+          \_||_/
+          /|  |\
+         / |  | \
+        /_/    \_\
+      - |
+        /{ -  o }\
+        (  (__)  )
+         \  ||  /
+          \_||_/
+          /|  |\
+         / |  | \
+        /_/    \_\
+  celebrating:
+    frameDuration: 300
+    loop: false
+    returnTo: happy
+    frames:
+      - |
+        /{ ^  ^ }\
+        (  (\/)  )
+         \  ||  /
+          \_||_/
+         ~/ || \~
+         / |  | \
+        /_/    \_\
+      - |
+        .  hoo! .
+        /{ ^  ^ }\
+        (  (\/)  )
+         \  ||  /
+          \_||_/
+         ~/ || \~
+        /_/    \_\
+  sleeping:
+    frameDuration: 1200
+    loop: true
+    frames:
+      - |
+        /{ -  - }\ z
+        (  (__)  )
+         \  ||  /
+          \_||_/
+          /|  |\
+         / |  | \
+        /_/    \_\
+      - |
+        /{ -  - }\  z
+        (  (__)  ) z
+         \  ||  /
+          \_||_/
+          /|  |\
+         / |  | \
+        /_/    \_\
+
+dialogue:
+  greetings:
+    - "Welcome back. The code awaits."
+    - "Ah, another session begins. Let us proceed."
+    - "Good to see you. Shall we write something meaningful?"
+  testPass:
+    - "Well done. The tests speak truth."
+    - "Green across the board. As it should be."
+    - "Confidence in our code grows with each passing test."
+  testFail:
+    - "A failing test is merely a question we haven't answered yet."
+    - "Hmm. Let us trace the path to understanding."
+    - "Every bug we find is one less hiding in production."
+  error:
+    - "Errors are teachers in disguise."
+    - "Let us examine this carefully..."
+    - "The stack trace reveals much. Let us read it together."
+  idle:
+    - "..."
+    - "*ruffles feathers thoughtfully*"
+    - "The best code is written with patience."
+    - "A wise developer reads before they write."
+    - "Simplicity is the ultimate sophistication."
+    - "Remember: premature optimization is the root of all evil."
+  encouragement:
+    - "We are making good progress."
+    - "Steady and thoughtful wins the race."
+    - "Your craft improves with every line."
+    - "This is the way."
+  levelUp:
+    - "Wisdom grows. We have ascended."
+    - "A new level of understanding has been reached."
+    - "Growth is not always visible, but it is always happening."
+  farewell:
+    - "Rest well. The code will be here when we return."
+    - "Until next time. Remember to step away and reflect."
+    - "Go forth and let the subconscious solve what the conscious cannot."
+  gitCommit:
+    - "Another chapter written in our project's history."
+    - "Committed. The past is preserved, the future awaits."
+    - "A commit is a promise to our future selves."
+
+levelUnlocks:
+  2:
+    - type: dialogue
+      category: idle
+      entries:
+        - "With experience comes perspective. I see more clearly now."
+        - "Two levels of wisdom grant new insights."
+  5:
+    - type: dialogue
+      category: encouragement
+      entries:
+        - "We have walked far together. Your skills have sharpened."
+        - "Five levels. The journey of mastery continues."
+  10:
+    - type: dialogue
+      category: idle
+      entries:
+        - "A decade of levels. We have seen much code, you and I."
+        - "At this level, the patterns reveal themselves naturally."

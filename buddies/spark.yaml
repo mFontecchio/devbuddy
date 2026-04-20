@@ -1,0 +1,202 @@
+id: spark
+name: Spark
+description: "An energetic lightning bolt who codes at maximum velocity"
+version: 1
+
+appearance:
+  width: 16
+  height: 7
+
+stats:
+  wisdom: 4
+  energy: 10
+  humor: 6
+  debugSkill: 5
+  patience: 2
+
+personality:
+  traits:
+    - hyperactive
+    - optimistic
+    - impatient
+  speechStyle: "ALL CAPS when excited (which is always). Short bursts. Uses lightning and energy metaphors."
+  catchphrase: "FULL SPEED AHEAD!"
+
+animations:
+  idle:
+    frameDuration: 400
+    loop: true
+    frames:
+      - |
+        .  /| .
+        . / | .
+        ./  | .
+        /  /  .
+        | /   .
+        |/  * .
+      - |
+        .  /| .
+        . / | *
+        ./  | .
+        /  /  .
+        | /   .
+        |/  . .
+      - |
+        .* /| .
+        . / | .
+        ./  | .
+        /  /  .
+        | /   .
+        |/  . .
+  happy:
+    frameDuration: 200
+    loop: false
+    returnTo: idle
+    frames:
+      - |
+        .* /| *
+        . / | .
+        ./  | .
+        /  /  .
+        | /   .
+        |/ *  .
+      - |
+        *  /| .
+        . / | *
+        ./  | .
+        /  / *.
+        | /   .
+        |/  * .
+  sad:
+    frameDuration: 600
+    loop: true
+    frames:
+      - |
+        .  /| .
+        . / | .
+        ./  | .
+        /  /  .
+        | / . .
+        |/  . .
+      - |
+        .  /| .
+        . / | ..
+        ./  | .
+        /  /  .
+        | /   .
+        |/  . .
+  thinking:
+    frameDuration: 350
+    loop: true
+    frames:
+      - |
+        .  /| ?
+        . / | .
+        ./  | .
+        /  /  .
+        | /   .
+        |/  . .
+      - |
+        .  /| .
+        . / | ?
+        ./  | .
+        /  /  .
+        | /   .
+        |/  . .
+  celebrating:
+    frameDuration: 150
+    loop: false
+    returnTo: happy
+    frames:
+      - |
+        *  /| *
+        * / | *
+        ./  | .
+        /  / *.
+        | / * .
+        |/ *  .
+      - |
+        ** /| **
+        * / | *.
+        */  |* .
+        /  / *.
+        | / **.
+        |/ ** .
+  sleeping:
+    frameDuration: 900
+    loop: true
+    frames:
+      - |
+        .  /| z
+        . / | .
+        ./  | .
+        /  /  .
+        | /   .
+        |/  . .
+      - |
+        .  /|  z
+        . / | z.
+        ./  | .
+        /  /  .
+        | /   .
+        |/  . .
+
+dialogue:
+  greetings:
+    - "BZZT! Ready to GO GO GO!"
+    - "SPARK ONLINE! Let's write code at LIGHT SPEED!"
+    - "Hey! Hey! HEY! Let's build something AMAZING!"
+    - "CHARGED UP and ready to compile!"
+  testPass:
+    - "YESSS! TESTS PASSED! MAXIMUM VOLTAGE!"
+    - "ALL GREEN ALL DAY! That's what I'm TALKING about!"
+    - "BZZT! Nailed it! PERFECT execution!"
+  testFail:
+    - "WHAT?! No! We'll fix this SO FAST!"
+    - "FAILED?! Quick quick quick, let's debug!"
+    - "Temporary setback! We're FASTER than this bug!"
+  error:
+    - "ERROR?! We'll ZAP it into oblivion!"
+    - "Bug spotted! CHARGING UP debug mode!"
+    - "Ooh an error! EXCITING! I mean... let's fix it!"
+  idle:
+    - "*vibrates with energy*"
+    - "Come on come on come on let's DO something!"
+    - "*bounces around the terminal*"
+    - "I can feel the electrons flowing through the circuits!"
+    - "Quick question: why aren't we coding RIGHT NOW?!"
+    - "BORED! Let's refactor something! Or build a feature! Or BOTH!"
+  encouragement:
+    - "You're CRUSHING IT! Keep that momentum!"
+    - "FASTER! BETTER! MORE CODE!"
+    - "You're like a lightning bolt yourself!"
+    - "This is AMAZING! Don't stop now!"
+  levelUp:
+    - "LEVEL UP! POWER SURGE! MAXIMUM OVERDRIVE!"
+    - "NEW LEVEL! I can feel the ELECTRICITY!"
+  farewell:
+    - "Shutting down?! But we were just getting STARTED! ...fine. See ya!"
+    - "BZZZT... powering down... see you... soon... zzz"
+  gitCommit:
+    - "COMMITTED! History recorded at LIGHT SPEED!"
+    - "Another commit! We're UNSTOPPABLE!"
+
+levelUnlocks:
+  2:
+    - type: dialogue
+      category: idle
+      entries:
+        - "LEVEL 2! My circuits are TINGLING!"
+        - "POWER UPGRADE! I can vibrate EVEN FASTER now!"
+  5:
+    - type: dialogue
+      category: encouragement
+      entries:
+        - "Five levels of PURE ENERGY! We're a POWERHOUSE!"
+        - "BZZT! Our synergy is OFF THE CHARTS!"
+  10:
+    - type: dialogue
+      category: idle
+      entries:
+        - "LEVEL 10! I've reached PEAK VOLTAGE!"
+        - "DOUBLE DIGITS! My energy levels are... MAXIMUM!"
