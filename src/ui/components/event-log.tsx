@@ -1,56 +1,57 @@
 import React from "react";
 import { Box, Text } from "ink";
+import type { RecentEventRecord } from "../../daemon/protocol.js";
 
 interface EventLogProps {
-  events: string[];
+  events: RecentEventRecord[];
 }
 
-const EVENT_COLORS: Record<string, string> = {
-  "test:pass": "green",
-  "test:fail": "red",
-  "build:success": "green",
-  "build:fail": "red",
-  "compile:error": "red",
-  "runtime:error": "red",
-  "git:commit": "yellow",
-  "npm:install": "blue",
-  "generic:error": "red",
-  "generic:success": "green",
-  "fs:error": "red",
-  "cmd:test": "cyan",
-  "cmd:build": "cyan",
-  "cmd:git-commit": "yellow",
-  "cmd:git-push": "yellow",
-  "cmd:git-pull": "blue",
-  "cmd:git-merge": "yellow",
-  "cmd:install": "blue",
-  "cmd:lint": "magenta",
-  "cmd:run": "green",
-  "cmd:devops": "cyan",
+// Colors/icons for `cmd` events are driven by exit code, and for
+// `agent_event` by the sub-kind. Keeping the maps small lets the log
+// stay readable instead of turning into a legend the user has to memorize.
+const AGENT_COLORS: Record<string, string> = {
+  prompt_submit: "cyan",
+  tool_use: "magenta",
+  file_edit: "blue",
+  complete: "green",
+  error: "red",
+  stop: "gray",
 };
 
-const EVENT_ICONS: Record<string, string> = {
-  "test:pass": "+",
-  "test:fail": "x",
-  "build:success": "+",
-  "build:fail": "x",
-  "compile:error": "!",
-  "runtime:error": "!",
-  "git:commit": "*",
-  "npm:install": "~",
-  "generic:error": "x",
-  "generic:success": ".",
-  "cmd:test": ">",
-  "cmd:build": ">",
-  "cmd:git-commit": "*",
-  "cmd:git-push": "^",
-  "cmd:git-pull": "v",
-  "cmd:git-merge": "=",
-  "cmd:install": "~",
-  "cmd:lint": ">",
-  "cmd:run": ">",
-  "cmd:devops": ">",
+const AGENT_ICONS: Record<string, string> = {
+  prompt_submit: ">",
+  tool_use: "*",
+  file_edit: "~",
+  complete: "+",
+  error: "x",
+  stop: ".",
 };
+
+function formatTimestamp(ts: number): string {
+  return new Date(ts).toTimeString().slice(0, 8);
+}
+
+function renderEvent(ev: RecentEventRecord): { color: string; icon: string; text: string } {
+  const time = formatTimestamp(ev.ts);
+
+  if (ev.kind === "cmd") {
+    const failed = typeof ev.exit === "number" && ev.exit !== 0;
+    const color = failed ? "red" : "green";
+    const icon = failed ? "x" : ".";
+    const exitLabel = failed ? ` (exit ${ev.exit})` : "";
+    return { color, icon, text: `${time}  ${ev.summary}${exitLabel}` };
+  }
+
+  if (ev.kind === "agent_event") {
+    const sub = ev.subKind || "?";
+    const color = AGENT_COLORS[sub] || "white";
+    const icon = AGENT_ICONS[sub] || "-";
+    const src = ev.source ? `${ev.source}/${sub}` : sub;
+    return { color, icon, text: `${time}  ${src}  ${ev.summary}` };
+  }
+
+  return { color: "yellow", icon: ">", text: `${time}  ${ev.summary}` };
+}
 
 export function EventLog({ events }: EventLogProps) {
   if (events.length === 0) {
@@ -59,11 +60,14 @@ export function EventLog({ events }: EventLogProps) {
 
   return (
     <Box flexDirection="column">
-      {events.map((event, i) => (
-        <Text key={i} color={(EVENT_COLORS[event] as any) || "white"}>
-          {EVENT_ICONS[event] || "-"} {event}
-        </Text>
-      ))}
+      {events.map((ev, i) => {
+        const { color, icon, text } = renderEvent(ev);
+        return (
+          <Text key={i} color={color as any}>
+            {icon} {text}
+          </Text>
+        );
+      })}
     </Box>
   );
 }

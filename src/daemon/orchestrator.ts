@@ -59,12 +59,34 @@ export class Orchestrator {
 
   constructor(config?: Partial<DevBuddyConfig>) {
     this.config = loadConfig(config);
-    this.server = new DaemonServer((msg, client) =>
-      this.handleMessage(msg, client),
+    this.server = new DaemonServer(
+      (msg, client) => this.handleMessage(msg, client),
+      (client) => this.handleClientDisconnect(client),
     );
     this.registry = new BuddyRegistry();
     this.patternMatcher = new PatternMatcher();
     this.context = new ConversationContext();
+  }
+
+  /**
+   * Called by the server whenever a client disconnects. When the
+   * disconnecting client was marked `isPrimary` (set by the floating
+   * buddy window via `{ type: "subscribe", primary: true }`), the
+   * daemon treats this as a user-initiated shutdown and stops itself
+   * so the background process does not outlive the visible buddy.
+   */
+  private handleClientDisconnect(client: {
+    id: number;
+    isPrimary: boolean;
+  }): void {
+    if (!client.isPrimary) return;
+    log(
+      "info",
+      `Primary client ${client.id} disconnected, shutting daemon down`,
+    );
+    // Fire-and-forget; orchestrator.stop() is async but calls
+    // process.exit(0) at the end.
+    void this.stop();
   }
 
   async start(): Promise<void> {
@@ -230,7 +252,11 @@ export class Orchestrator {
 
       case "subscribe":
         client.subscribed = true;
-        log("debug", `Client ${client.id} subscribed`);
+        client.isPrimary = msg.primary === true;
+        log(
+          "debug",
+          `Client ${client.id} subscribed${client.isPrimary ? " (primary)" : ""}`,
+        );
         // Send immediate state
         const state = this.buildStateUpdate();
         if (state) this.server.send(client, state);

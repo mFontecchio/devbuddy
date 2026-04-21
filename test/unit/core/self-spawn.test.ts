@@ -17,7 +17,12 @@ describe("resolveSelfInvocation", () => {
     });
   });
 
-  it("uses node + dist/devbuddy.js when running .ts with a built dist", () => {
+  it("always uses `npx tsx <script>` when running .ts, even if a built dist exists", () => {
+    // Historical behavior preferred dist/devbuddy.js as a perf shortcut,
+    // but that caused child processes to run a stale build whenever the
+    // user edited source without rebuilding. The new contract is: if
+    // the parent process is running TypeScript source, children re-run
+    // TypeScript source too, so source edits are never silently ignored.
     const pkgRoot = path.sep === "\\" ? "C:\\proj" : "/proj";
     const script = path.join(pkgRoot, "bin", "devbuddy.ts");
     const expectedDist = path.join(pkgRoot, "dist", "devbuddy.js");
@@ -30,11 +35,9 @@ describe("resolveSelfInvocation", () => {
       exists: (p) => p === pkgJson || p === expectedDist,
     });
 
-    expect(result).toEqual({
-      command: "/usr/bin/node",
-      args: [expectedDist],
-      needsShell: false,
-    });
+    expect(result.command).toBe("npx");
+    expect(result.args).toEqual(["tsx", script]);
+    expect(result.needsShell).toBe(false);
   });
 
   it("falls back to `npx tsx <script>` on linux when no dist is built", () => {

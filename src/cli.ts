@@ -191,6 +191,10 @@ export function createCli(): Command {
     .option("-m, --mode <mode>", "Display mode: pane | overlay | floating")
     .option("-a, --anchor <anchor>", "Overlay anchor: top | bottom")
     .option("--height <rows>", "Overlay height in rows")
+    .option(
+      "--primary",
+      "Mark this UI as the primary buddy window. When it closes, the background daemon also shuts down so no orphan process is left behind. Set automatically by the floating window launcher.",
+    )
     .action(async (opts) => {
       const { loadConfig, saveConfigPatch } = await import("./core/config.js");
       const cfg = loadConfig();
@@ -233,7 +237,7 @@ export function createCli(): Command {
       }
 
       const { launchUI } = await import("./ui/index.js");
-      await launchUI();
+      await launchUI({ primary: !!opts.primary });
     });
 
   // --- hook subcommand group ---
@@ -484,11 +488,16 @@ export function createCli(): Command {
       } else {
         const child = spawnSelf(["daemon", "start", "--foreground"]);
         child.unref();
-        const ok = await waitForDaemon(5000);
+        // Give cold Node starts (tsx transform, module resolution, etc.)
+        // enough headroom before declaring failure. 10s mirrors the
+        // `devbuddy chat` auto-spawn budget.
+        const ok = await waitForDaemon(10000);
         if (ok) {
           console.log(`  4. Daemon started (PID: ${child.pid})\n`);
         } else {
-          console.log("  4. Daemon failed to start within 5s; try `devbuddy daemon start` manually.\n");
+          console.log(
+            "  4. Daemon failed to start within 10s; try `devbuddy daemon start --foreground` to see errors.\n",
+          );
         }
       }
 

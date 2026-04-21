@@ -24,29 +24,27 @@ export interface ResolveOptions {
  * Pure (no spawn) so it can be unit-tested without touching real processes.
  *
  *   1. Script ends in `.js/.cjs/.mjs` (installed / built) -> `node <script>`.
- *   2. Script ends in `.ts` (dev via tsx):
- *      a. If a built `dist/devbuddy.js` exists in the nearest package root,
- *         prefer that -> `node <dist>`.
- *      b. Otherwise fall back to `npx tsx <script>` (uses `npx.cmd` on
- *         Windows, which must run with `shell: true`).
+ *   2. Script ends in `.ts` (dev via tsx) -> `npx tsx <script>` (uses
+ *      `npx.cmd` on Windows, which must run with `shell: true`). This
+ *      intentionally does NOT fall back to a pre-built `dist/devbuddy.js`
+ *      even when one exists: in dev the user is iterating on source,
+ *      and preferring a potentially stale `dist/` causes child processes
+ *      (setup's floating window, auto-spawned daemon, `ui` popup) to
+ *      run an older CLI than the parent. That caused "unknown option"
+ *      errors and silently stale behavior whenever `dist/` was not
+ *      rebuilt between code changes.
  *   3. Anything else -> `node <script>` as a best effort.
  */
 export function resolveSelfInvocation(opts: ResolveOptions = {}): SelfInvocation {
   const script = opts.script ?? process.argv[1] ?? "";
   const execPath = opts.execPath ?? process.execPath;
   const platform = opts.platform ?? process.platform;
-  const exists = opts.exists ?? fs.existsSync;
+  // `exists` retained for signature compatibility with callers/tests;
+  // no longer consulted now that we always defer to tsx in dev.
+  void (opts.exists ?? fs.existsSync);
 
   if (!script.endsWith(".ts")) {
     return { command: execPath, args: [script], needsShell: false };
-  }
-
-  const pkgRoot = findPackageRoot(script, exists);
-  if (pkgRoot) {
-    const distBin = path.join(pkgRoot, "dist", "devbuddy.js");
-    if (exists(distBin)) {
-      return { command: execPath, args: [distBin], needsShell: false };
-    }
   }
 
   const npxCmd = platform === "win32" ? "npx.cmd" : "npx";
@@ -72,12 +70,3 @@ export function spawnSelf(subArgs: string[], opts: SpawnOptions = {}): ChildProc
   });
 }
 
-function findPackageRoot(startFile: string, exists: (p: string) => boolean): string | null {
-  let dir = path.dirname(startFile);
-  const root = path.parse(dir).root;
-  while (dir && dir !== root) {
-    if (exists(path.join(dir, "package.json"))) return dir;
-    dir = path.dirname(dir);
-  }
-  return null;
-}

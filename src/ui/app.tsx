@@ -3,8 +3,8 @@ import { Box, Text, useApp, useInput, useStdout } from "ink";
 import { DaemonClient } from "../daemon/client.js";
 import type {
   BuddyStateUpdate,
-  EventNotification,
   OutboundMessage,
+  RecentEventRecord,
 } from "../daemon/protocol.js";
 import { BuddyPanel } from "./components/buddy-panel.js";
 import { SpeechBubble } from "./components/speech-bubble.js";
@@ -52,7 +52,7 @@ export function App({ client }: AppProps) {
   const [state, setState] = useState<BuddyStateUpdate | null>(null);
   const [connected, setConnected] = useState(client.connected);
   const [chatMode, setChatMode] = useState(false);
-  const [events, setEvents] = useState<string[]>([]);
+  const [events, setEvents] = useState<RecentEventRecord[]>([]);
   const [showEvents, setShowEvents] = useState(false);
   const [chatLog, setChatLog] = useState<string[]>([]);
 
@@ -64,8 +64,8 @@ export function App({ client }: AppProps) {
         case "state":
           setState(msg);
           break;
-        case "event":
-          setEvents((prev) => [...prev.slice(-9), (msg as EventNotification).event]);
+        case "recent_event":
+          setEvents((prev) => [...prev.slice(-9), msg.event]);
           break;
         case "chat_response": {
           const text = (msg as { text: string }).text;

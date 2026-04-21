@@ -15,9 +15,20 @@ export class DaemonClient extends EventEmitter {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private _connected = false;
   private _subscribed = false;
+  private _primary = false;
 
   get connected(): boolean {
     return this._connected;
+  }
+
+  /**
+   * Marks this client as the "primary" UI (the floating buddy window).
+   * When a primary client disconnects, the daemon interprets that as
+   * the user closing the buddy and shuts itself down. Must be called
+   * before `subscribe()`; the flag is re-asserted on reconnect.
+   */
+  setPrimary(primary: boolean): void {
+    this._primary = primary;
   }
 
   connect(autoReconnect = true): Promise<void> {
@@ -29,7 +40,10 @@ export class DaemonClient extends EventEmitter {
         this._connected = true;
         this.reconnecting = false;
         if (this._subscribed) {
-          this.send({ type: "subscribe" });
+          this.send({
+            type: "subscribe",
+            ...(this._primary ? { primary: true } : {}),
+          });
         }
         this.emit("connected");
         resolve();
@@ -86,7 +100,10 @@ export class DaemonClient extends EventEmitter {
 
   subscribe(): void {
     this._subscribed = true;
-    this.send({ type: "subscribe" });
+    this.send({
+      type: "subscribe",
+      ...(this._primary ? { primary: true } : {}),
+    });
   }
 
   sendChat(text: string): void {

@@ -14,6 +14,13 @@ export interface ClientConnection {
   id: number;
   socket: net.Socket;
   subscribed: boolean;
+  /**
+   * Marked by the orchestrator when a client sends
+   * `{ type: "subscribe", primary: true }`. Used by the server to
+   * fire `onDisconnect` so the orchestrator can shut the daemon
+   * down when the primary UI closes.
+   */
+  isPrimary: boolean;
   buffer: string;
 }
 
@@ -22,15 +29,19 @@ export type MessageHandler = (
   client: ClientConnection,
 ) => void;
 
+export type DisconnectHandler = (client: ClientConnection) => void;
+
 export class DaemonServer {
   private server: net.Server | null = null;
   private clients = new Map<number, ClientConnection>();
   private nextClientId = 1;
   private onMessage: MessageHandler;
+  private onDisconnect: DisconnectHandler | null;
   private socketPath: string;
 
-  constructor(onMessage: MessageHandler) {
+  constructor(onMessage: MessageHandler, onDisconnect?: DisconnectHandler) {
     this.onMessage = onMessage;
+    this.onDisconnect = onDisconnect || null;
     this.socketPath = DaemonServer.getSocketPath();
   }
 
@@ -100,11 +111,28 @@ export class DaemonServer {
       id: this.nextClientId++,
       socket,
       subscribed: false,
+      isPrimary: false,
       buffer: "",
     };
 
     this.clients.set(client.id, client);
     log("debug", `Client ${client.id} connected`);
+
+    let disconnectFired = false;
+    const fireDisconnect = () => {
+      if (disconnectFired) return;
+      disconnectFired = true;
+      this.clients.delete(client.id);
+      if (this.onDisconnect) {
+        try {
+          this.onDisconnect(client);
+        } catch (err) {
+          log("error", `onDisconnect handler threw`, {
+            error: (err as Error).message,
+          });
+        }
+      }
+    };
 
     socket.on("data", (data) => {
       client.buffer += data.toString();
@@ -124,13 +152,13 @@ export class DaemonServer {
     });
 
     socket.on("close", () => {
-      this.clients.delete(client.id);
       log("debug", `Client ${client.id} disconnected`);
+      fireDisconnect();
     });
 
     socket.on("error", (err) => {
       log("debug", `Client ${client.id} error: ${(err as Error).message}`);
-      this.clients.delete(client.id);
+      fireDisconnect();
     });
   }
 

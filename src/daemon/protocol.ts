@@ -23,6 +23,14 @@ export interface ChatMessage {
 
 export interface SubscribeMessage {
   type: "subscribe";
+  /**
+   * When true, the daemon treats this client as the "primary" UI
+   * (typically the floating buddy window). When the primary client
+   * disconnects, the daemon interprets that as the user closing the
+   * buddy and shuts itself down so no orphan background process
+   * survives.
+   */
+  primary?: boolean;
 }
 
 export interface ChooseBuddyMessage {

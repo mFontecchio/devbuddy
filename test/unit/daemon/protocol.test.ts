@@ -56,6 +56,30 @@ describe("protocol", () => {
       const msg = parseMessage(raw);
       expect(msg).not.toBeNull();
       expect(msg!.type).toBe("subscribe");
+      if (msg!.type === "subscribe") {
+        expect(msg!.primary).toBeUndefined();
+      }
+    });
+
+    it("parses a subscribe message with primary flag", () => {
+      const raw = '{"type":"subscribe","primary":true}';
+      const msg = parseMessage(raw);
+      expect(msg).not.toBeNull();
+      expect(msg!.type).toBe("subscribe");
+      if (msg!.type === "subscribe") {
+        expect(msg!.primary).toBe(true);
+      }
+    });
+
+    it("round-trips a subscribe { primary: true } message", () => {
+      const original: InboundMessage = { type: "subscribe", primary: true };
+      const raw = serialize(original).trim();
+      const msg = parseMessage(raw);
+      expect(msg).not.toBeNull();
+      expect(msg!.type).toBe("subscribe");
+      if (msg!.type === "subscribe") {
+        expect(msg!.primary).toBe(true);
+      }
     });
 
     it("parses a ping message", () => {
