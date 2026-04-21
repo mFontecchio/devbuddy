@@ -45,6 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - SpeechBubble reserves a fixed vertical space (5 lines) whether text is shown or not, eliminating layout shifts when speech appears/disappears
 
 ### Fixed
+- Auto-spawn of the daemon from `devbuddy start`, `devbuddy ui`, `devbuddy setup`, and `devbuddy daemon restart` was broken in dev (`npm run dev -- ...`) because `spawn(node, process.argv[1])` tried to run a `.ts` file directly. Added `src/core/self-spawn.ts` which detects the invocation style and uses `node dist/devbuddy.js` when a build is present or falls back to `npx tsx <script>` otherwise; production installs (`node dist/devbuddy.js`, global npm install, `npm link`) are unaffected
+- Replaced the fixed 1500 ms post-spawn sleep with `waitForDaemon()` that polls `DaemonServer.isDaemonRunning()` for up to 5 s, so `ui`/`start` do not hand off to the display before the daemon is actually listening, and report a clear error on timeout
 - CLI bin path in `package.json` pointed to non-existent `dist/bin/devbuddy.js`; corrected to `dist/devbuddy.js` to match tsup output
 - Duplicate shebang in built CLI entry point caused `SyntaxError` on Node.js ESM; removed shebang from source `bin/devbuddy.ts` so only tsup banner injects it
 - `BuddyRegistry.loadBuiltIn()` resolved `../../buddies` relative to `import.meta.url`, which pointed to the wrong directory after tsup flattens output into `dist/`; now tries `../buddies` first (bundled) with `../../buddies` fallback (source)

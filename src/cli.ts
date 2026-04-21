@@ -2,6 +2,7 @@ import { Command } from "commander";
 import { spawn, type ChildProcess } from "child_process";
 import { BuddyRegistry } from "./buddy/registry.js";
 import { BuddyInstance } from "./buddy/instance.js";
+import { spawnSelf } from "./core/self-spawn.js";
 import {
   getBuddyProgress,
   getActiveBuddyId,
@@ -23,6 +24,20 @@ import {
 } from "./hooks/init.js";
 import { AGENT_TOOLS, getAgentWriter, type AgentTool } from "./hooks/agents/index.js";
 import type { AgentEventKind, AgentSource } from "./daemon/protocol.js";
+
+/**
+ * Poll the daemon's PID file / socket until it becomes available.
+ * Returns true once the daemon is running, false on timeout. Much more
+ * reliable than a fixed-delay sleep, especially on slow Windows spawns.
+ */
+async function waitForDaemon(timeoutMs = 5000, pollMs = 150): Promise<boolean> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (DaemonServer.isDaemonRunning()) return true;
+    await new Promise((r) => setTimeout(r, pollMs));
+  }
+  return DaemonServer.isDaemonRunning();
+}
 
 export function createCli(): Command {
   const program = new Command();
@@ -55,21 +70,11 @@ export function createCli(): Command {
         await orchestrator.start();
         console.log("Daemon running in foreground. Press Ctrl+C to stop.");
       } else {
-        // Spawn detached daemon process
-        const args = [
-          process.argv[1],
-          "daemon",
-          "start",
-          "--foreground",
-        ];
+        const args = ["daemon", "start", "--foreground"];
         if (opts.debug) args.push("--debug");
         if (opts.buddy) args.push("--buddy", opts.buddy);
 
-        const child = spawn(process.execPath, args, {
-          detached: true,
-          stdio: "ignore",
-          env: { ...process.env },
-        });
+        const child = spawnSelf(args, { env: { ...process.env } });
         child.unref();
         console.log(`Daemon started (PID: ${child.pid})`);
       }
@@ -153,12 +158,7 @@ export function createCli(): Command {
         } catch { /* ignore */ }
       }
 
-      // Start
-      const args = [process.argv[1], "daemon", "start", "--foreground"];
-      const child = spawn(process.execPath, args, {
-        detached: true,
-        stdio: "ignore",
-      });
+      const child = spawnSelf(["daemon", "start", "--foreground"]);
       child.unref();
       console.log(`Daemon restarted (PID: ${child.pid})`);
     });
@@ -191,16 +191,11 @@ export function createCli(): Command {
       }
       saveConfigPatch(patch);
 
-      // Auto-start daemon if not running
       if (!DaemonServer.isDaemonRunning()) {
         console.log("Starting daemon...");
-        const daemonArgs = [process.argv[1], "daemon", "start", "--foreground"];
-        const child = spawn(process.execPath, daemonArgs, {
-          detached: true,
-          stdio: "ignore",
-        });
+        const child = spawnSelf(["daemon", "start", "--foreground"]);
         child.unref();
-        await new Promise((r) => setTimeout(r, 1500));
+        await waitForDaemon(5000);
       }
 
       if (mode === "overlay") {
@@ -462,18 +457,18 @@ export function createCli(): Command {
         console.log(`\n     Current: ${activeDef?.name || currentActive}`);
       }
 
-      // 4. Start daemon
       console.log();
       if (DaemonServer.isDaemonRunning()) {
         console.log("  4. Daemon: already running\n");
       } else {
-        const args = [process.argv[1], "daemon", "start", "--foreground"];
-        const child = spawn(process.execPath, args, {
-          detached: true,
-          stdio: "ignore",
-        });
+        const child = spawnSelf(["daemon", "start", "--foreground"]);
         child.unref();
-        console.log(`  4. Daemon started (PID: ${child.pid})\n`);
+        const ok = await waitForDaemon(5000);
+        if (ok) {
+          console.log(`  4. Daemon started (PID: ${child.pid})\n`);
+        } else {
+          console.log("  4. Daemon failed to start within 5s; try `devbuddy daemon start` manually.\n");
+        }
       }
 
       // 5. Instructions
@@ -495,19 +490,20 @@ export function createCli(): Command {
     .option("-a, --anchor <anchor>", "Overlay anchor: top | bottom")
     .option("--debug", "Enable debug logging")
     .action(async (opts) => {
-      // Start daemon if not running
       if (!DaemonServer.isDaemonRunning()) {
-        const args = [process.argv[1], "daemon", "start", "--foreground"];
+        const args = ["daemon", "start", "--foreground"];
         if (opts.debug) args.push("--debug");
         if (opts.buddy) args.push("--buddy", opts.buddy);
 
-        const child = spawn(process.execPath, args, {
-          detached: true,
-          stdio: "ignore",
-        });
+        const child = spawnSelf(args);
         child.unref();
-        console.log(`Daemon started (PID: ${child.pid})`);
-        await new Promise((r) => setTimeout(r, 1500));
+        const ok = await waitForDaemon(5000);
+        if (ok) {
+          console.log(`Daemon started (PID: ${child.pid})`);
+        } else {
+          console.error("Daemon failed to start within 5s. Try `devbuddy daemon start --foreground` to see errors.");
+          process.exit(1);
+        }
       }
 
       const mode = (opts.mode || "pane").toLowerCase();
