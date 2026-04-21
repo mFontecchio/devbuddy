@@ -2,6 +2,7 @@ import { DaemonServer, type ClientConnection } from "./server.js";
 import type {
   InboundMessage,
   BuddyStateUpdate,
+  AgentEvent,
 } from "./protocol.js";
 import { eventBus } from "../core/events.js";
 import { initLogger, log, closeLogger } from "../utils/logger.js";
@@ -23,7 +24,7 @@ import { loadConfig } from "../core/config.js";
 import { levelProgress, xpToNextLevel } from "../progression/level-system.js";
 import type { DevBuddyConfig } from "../types/config.js";
 
-const TICK_INTERVAL_MS = 250;
+const TICK_INTERVAL_MS = 100;
 const IDLE_TIMEOUT_MS = 30_000;
 const SLEEP_TIMEOUT_MS = 300_000;
 const AUTOSAVE_INTERVAL_MS = 60_000;
@@ -215,6 +216,10 @@ export class Orchestrator {
         this.handleOutputLine(msg.line);
         break;
 
+      case "agent_event":
+        this.handleAgentEvent(msg);
+        break;
+
       case "chat":
         this.handleChat(msg.text, client);
         break;
@@ -294,6 +299,19 @@ export class Orchestrator {
     if (match) {
       this.handlePatternMatch(match.event);
     }
+  }
+
+  private handleAgentEvent(msg: AgentEvent): void {
+    this.resetIdleTimer();
+    const eventKey = `agent:${msg.kind === "prompt_submit" ? "prompt" : msg.kind === "tool_use" ? "tool" : msg.kind === "file_edit" ? "edit" : msg.kind}`;
+    this.context.addEvent(eventKey);
+
+    const detail = [msg.source, msg.tool, msg.file, msg.summary]
+      .filter(Boolean)
+      .join(" ");
+    log("debug", `Agent event: ${eventKey}`, { source: msg.source, detail: detail.slice(0, 120) });
+
+    this.handlePatternMatch(eventKey);
   }
 
   private handlePatternMatch(event: string): void {

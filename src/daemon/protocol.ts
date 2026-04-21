@@ -38,6 +38,27 @@ export interface StopMessage {
   type: "stop";
 }
 
+export type AgentSource = "claude" | "cursor" | "copilot";
+
+export type AgentEventKind =
+  | "prompt_submit"
+  | "tool_use"
+  | "file_edit"
+  | "complete"
+  | "error"
+  | "stop";
+
+export interface AgentEvent {
+  type: "agent_event";
+  source: AgentSource;
+  kind: AgentEventKind;
+  tool?: string;
+  file?: string;
+  summary?: string;
+  exit?: number;
+  timestamp?: number;
+}
+
 export type InboundMessage =
   | CommandEvent
   | OutputEvent
@@ -45,7 +66,8 @@ export type InboundMessage =
   | SubscribeMessage
   | ChooseBuddyMessage
   | PingMessage
-  | StopMessage;
+  | StopMessage
+  | AgentEvent;
 
 // --- Outbound messages (daemon -> display clients) ---
 

@@ -1,3 +1,6 @@
+export type DisplayMode = "pane" | "overlay" | "floating";
+export type OverlayAnchor = "top" | "bottom";
+
 export interface DevBuddyConfig {
   position: "right" | "bottom";
   panelWidth: number;
@@ -6,6 +9,9 @@ export interface DevBuddyConfig {
   buddiesDir: string[];
   activeBuddyId?: string;
   debugLog: boolean;
+  displayMode: DisplayMode;
+  overlayAnchor: OverlayAnchor;
+  overlayHeight: number;
 }
 
 export const DEFAULT_CONFIG: DevBuddyConfig = {
@@ -15,4 +21,7 @@ export const DEFAULT_CONFIG: DevBuddyConfig = {
   speechBubbleDuration: 4000,
   buddiesDir: [],
   debugLog: false,
+  displayMode: "pane",
+  overlayAnchor: "bottom",
+  overlayHeight: 8,
 };

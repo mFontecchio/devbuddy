@@ -21,6 +21,8 @@ import {
   isHookInstalled,
   type ShellType,
 } from "./hooks/init.js";
+import { AGENT_TOOLS, getAgentWriter, type AgentTool } from "./hooks/agents/index.js";
+import type { AgentEventKind, AgentSource } from "./daemon/protocol.js";
 
 export function createCli(): Command {
   const program = new Command();
@@ -164,19 +166,54 @@ export function createCli(): Command {
   // --- ui command ---
   program
     .command("ui")
-    .description("Launch the buddy display TUI")
-    .action(async () => {
+    .description("Launch the buddy display (pane | overlay | floating)")
+    .option("-m, --mode <mode>", "Display mode: pane | overlay | floating")
+    .option("-a, --anchor <anchor>", "Overlay anchor: top | bottom")
+    .option("--height <rows>", "Overlay height in rows")
+    .action(async (opts) => {
+      const { loadConfig, saveConfigPatch } = await import("./core/config.js");
+      const cfg = loadConfig();
+      const rawMode = (opts.mode || cfg.displayMode || "pane").toLowerCase();
+      const validModes = ["pane", "overlay", "floating"] as const;
+      type ModeT = (typeof validModes)[number];
+      const mode: ModeT = (validModes as readonly string[]).includes(rawMode)
+        ? (rawMode as ModeT)
+        : "pane";
+      const rawAnchor = (opts.anchor || cfg.overlayAnchor || "bottom").toLowerCase();
+      const anchor: "top" | "bottom" = rawAnchor === "top" ? "top" : "bottom";
+      const overlayHeight = opts.height ? parseInt(opts.height, 10) : cfg.overlayHeight;
+
+      // Persist user's selection for next time
+      const patch: Record<string, unknown> = { displayMode: mode };
+      if (mode === "overlay") {
+        patch.overlayAnchor = anchor;
+        if (overlayHeight) patch.overlayHeight = overlayHeight;
+      }
+      saveConfigPatch(patch);
+
       // Auto-start daemon if not running
       if (!DaemonServer.isDaemonRunning()) {
         console.log("Starting daemon...");
-        const args = [process.argv[1], "daemon", "start", "--foreground"];
-        const child = spawn(process.execPath, args, {
+        const daemonArgs = [process.argv[1], "daemon", "start", "--foreground"];
+        const child = spawn(process.execPath, daemonArgs, {
           detached: true,
           stdio: "ignore",
         });
         child.unref();
-        // Give daemon time to start
         await new Promise((r) => setTimeout(r, 1500));
+      }
+
+      if (mode === "overlay") {
+        const { launchOverlay } = await import("./ui/overlay.js");
+        await launchOverlay({ anchor, height: overlayHeight });
+        return;
+      }
+
+      if (mode === "floating") {
+        const { launchFloating } = await import("./ui/floating.js");
+        const desc = launchFloating({ mode: "pane" });
+        console.log(`Opened floating window via ${desc}.`);
+        return;
       }
 
       const { launchUI } = await import("./ui/index.js");
@@ -232,6 +269,156 @@ export function createCli(): Command {
 
       const configPath = uninstallHook(shell);
       console.log(`  Hook removed from ${configPath}\n`);
+    });
+
+  // --- agent subcommand group ---
+  const agent = program
+    .command("agent")
+    .description("Manage AI agent hooks (Claude, Cursor, Copilot)");
+
+  agent
+    .command("install")
+    .description("Install agent hooks for the given tool")
+    .requiredOption("-t, --tool <tool>", "Tool: claude | cursor | copilot")
+    .option("--global", "Cursor: install globally instead of in the current project")
+    .action((opts) => {
+      const tool = opts.tool as AgentTool;
+      if (!AGENT_TOOLS.includes(tool)) {
+        console.error(`Unknown tool: ${tool}. Valid: ${AGENT_TOOLS.join(", ")}`);
+        process.exit(1);
+      }
+      const writer = getAgentWriter(tool, { global: !!opts.global });
+      if (writer.isInstalled()) {
+        console.log(`  ${tool} hooks already installed at ${writer.configPath()}`);
+        return;
+      }
+      const result = writer.install();
+      console.log(`  ${tool} hooks installed: ${result}`);
+    });
+
+  agent
+    .command("uninstall")
+    .description("Remove agent hooks for the given tool")
+    .requiredOption("-t, --tool <tool>", "Tool: claude | cursor | copilot")
+    .option("--global", "Cursor: uninstall from global config")
+    .action((opts) => {
+      const tool = opts.tool as AgentTool;
+      if (!AGENT_TOOLS.includes(tool)) {
+        console.error(`Unknown tool: ${tool}. Valid: ${AGENT_TOOLS.join(", ")}`);
+        process.exit(1);
+      }
+      const writer = getAgentWriter(tool, { global: !!opts.global });
+      const result = writer.uninstall();
+      console.log(`  ${tool} hooks uninstalled: ${result}`);
+    });
+
+  agent
+    .command("status")
+    .description("Show which agent hooks are currently installed")
+    .action(() => {
+      console.log("\n  Agent hook status:\n");
+      for (const tool of AGENT_TOOLS) {
+        const writer = getAgentWriter(tool);
+        const installed = writer.isInstalled();
+        console.log(`  ${tool.padEnd(10)} ${installed ? "installed" : "not installed"}  (${writer.configPath()})`);
+      }
+      console.log();
+    });
+
+  // --- agent-event (one-shot event sender, called by hooks) ---
+  program
+    .command("agent-event")
+    .description("Send an AI agent event to the daemon (used by hooks)")
+    .requiredOption("-s, --source <source>", "Agent source: claude | cursor | copilot")
+    .requiredOption("-k, --kind <kind>", "Event kind: prompt_submit | tool_use | file_edit | complete | error | stop")
+    .option("--tool <tool>", "Tool name (e.g., Edit, Bash)")
+    .option("--file <file>", "File path related to the event")
+    .option("--summary <summary>", "Short summary of the event")
+    .option("--exit <code>", "Exit code (numeric)")
+    .option("--timeout <ms>", "Connection timeout in ms", "500")
+    .action(async (opts) => {
+      const source = opts.source as AgentSource;
+      const kind = opts.kind as AgentEventKind;
+      const validSources: AgentSource[] = ["claude", "cursor", "copilot"];
+      const validKinds: AgentEventKind[] = [
+        "prompt_submit", "tool_use", "file_edit", "complete", "error", "stop",
+      ];
+      if (!validSources.includes(source)) {
+        // Silent failure so hooks never break the host tool
+        process.exit(0);
+      }
+      if (!validKinds.includes(kind)) {
+        process.exit(0);
+      }
+      if (!DaemonServer.isDaemonRunning()) {
+        process.exit(0);
+      }
+      const client = new DaemonClient();
+      try {
+        const connectPromise = client.connect(false);
+        const timeoutMs = parseInt(opts.timeout, 10) || 500;
+        await Promise.race([
+          connectPromise,
+          new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), timeoutMs)),
+        ]);
+        client.sendAgentEvent({
+          source,
+          kind,
+          tool: opts.tool,
+          file: opts.file,
+          summary: opts.summary,
+          exit: opts.exit !== undefined ? parseInt(opts.exit, 10) : undefined,
+        });
+        await new Promise((r) => setTimeout(r, 100));
+      } catch {
+        // Fail silently so hooks don't disturb agent tools
+      } finally {
+        try { client.disconnect(); } catch { /* ignore */ }
+        process.exit(0);
+      }
+    });
+
+  // --- copilot wrapper command ---
+  program
+    .command("copilot")
+    .description("Run GitHub Copilot CLI under devBuddy (tags events as source=copilot)")
+    .allowUnknownOption(true)
+    .argument("[args...]", "Arguments to pass to `gh copilot`")
+    .action(async (args: string[] = []) => {
+      const cmdArgs = ["gh", "copilot", ...args];
+      let client: DaemonClient | null = null;
+
+      if (DaemonServer.isDaemonRunning()) {
+        try {
+          client = new DaemonClient();
+          await client.connect(false);
+          client.sendAgentEvent({ source: "copilot", kind: "prompt_submit", summary: args.join(" ") });
+        } catch {
+          client = null;
+        }
+      }
+
+      const child: ChildProcess = spawn(cmdArgs[0], cmdArgs.slice(1), {
+        stdio: "inherit",
+        shell: true,
+        env: { ...process.env },
+      });
+
+      const exitCode = await new Promise<number>((resolve) => {
+        child.on("close", (code) => resolve(code ?? 1));
+      });
+
+      if (client?.connected) {
+        client.sendAgentEvent({
+          source: "copilot",
+          kind: exitCode === 0 ? "complete" : "error",
+          exit: exitCode,
+        });
+        await new Promise((r) => setTimeout(r, 200));
+        client.disconnect();
+      }
+
+      process.exit(exitCode);
     });
 
   // --- setup wizard ---
@@ -302,8 +489,10 @@ export function createCli(): Command {
   // --- start (legacy / convenience) ---
   program
     .command("start")
-    .description("Start daemon and launch the TUI")
+    .description("Start daemon and launch the display")
     .option("-b, --buddy <name>", "Choose a specific buddy by name")
+    .option("-m, --mode <mode>", "Display mode: pane | overlay | floating")
+    .option("-a, --anchor <anchor>", "Overlay anchor: top | bottom")
     .option("--debug", "Enable debug logging")
     .action(async (opts) => {
       // Start daemon if not running
@@ -319,6 +508,20 @@ export function createCli(): Command {
         child.unref();
         console.log(`Daemon started (PID: ${child.pid})`);
         await new Promise((r) => setTimeout(r, 1500));
+      }
+
+      const mode = (opts.mode || "pane").toLowerCase();
+      if (mode === "overlay") {
+        const { launchOverlay } = await import("./ui/overlay.js");
+        const anchor = opts.anchor === "top" ? "top" : "bottom";
+        await launchOverlay({ anchor });
+        return;
+      }
+      if (mode === "floating") {
+        const { launchFloating } = await import("./ui/floating.js");
+        const desc = launchFloating({ mode: "pane" });
+        console.log(`Opened floating window via ${desc}.`);
+        return;
       }
 
       const { launchUI } = await import("./ui/index.js");

@@ -30,12 +30,23 @@ export interface BuddyPersonality {
   catchphrase: string;
 }
 
+export interface BuddyOverlayAppearance {
+  preferredAnchor?: "top" | "bottom";
+  padding?: number;
+}
+
+export interface BuddyAppearance {
+  width: number;
+  height: number;
+  overlay?: BuddyOverlayAppearance;
+}
+
 export interface BuddyDefinition {
   id: string;
   name: string;
   description: string;
   version: number;
-  appearance: { width: number; height: number };
+  appearance: BuddyAppearance;
   stats: BuddyStats;
   personality: BuddyPersonality;
   animations: Record<string, AnimationDef>;

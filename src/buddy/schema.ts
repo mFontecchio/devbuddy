@@ -51,6 +51,13 @@ const buddyPersonalitySchema = z.object({
   catchphrase: z.string(),
 });
 
+const overlayAppearanceSchema = z
+  .object({
+    preferredAnchor: z.enum(["top", "bottom"]).default("bottom"),
+    padding: z.number().int().min(0).max(8).default(1),
+  })
+  .optional();
+
 export const buddyDefinitionSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/, "ID must be lowercase alphanumeric with hyphens"),
   name: z.string().min(1),
@@ -59,6 +66,7 @@ export const buddyDefinitionSchema = z.object({
   appearance: z.object({
     width: z.number().int().min(1).max(40),
     height: z.number().int().min(1).max(20),
+    overlay: overlayAppearanceSchema,
   }),
   stats: buddyStatsSchema,
   personality: buddyPersonalitySchema,

@@ -75,12 +75,74 @@ In a separate terminal pane:
 devbuddy ui
 ```
 
+## Display Modes
+
+devBuddy ships three ways to view your buddy. Pick the one that suits your
+workflow:
+
+```bash
+devbuddy ui --mode pane                 # Ink TUI in its own terminal pane (default)
+devbuddy ui --mode overlay --anchor bottom   # Reserved region in your current shell
+devbuddy ui --mode overlay --anchor top
+devbuddy ui --mode floating             # Spawns a new OS terminal window
+```
+
+Your last choice is saved in `config.yaml`, so subsequent `devbuddy ui`
+invocations without flags will use the same mode.
+
+- **pane** -- Open a second terminal pane and run `devbuddy ui --mode pane`.
+  Best for tmux splits, VS Code integrated terminals, and Windows Terminal
+  panes.
+- **overlay** -- Runs in the same terminal as your shell. Uses an ANSI scroll
+  region to reserve the top or bottom N rows for the buddy while the shell
+  scrolls in the remaining area. Requires a VT100-capable terminal (any
+  modern terminal emulator on macOS/Linux, and Windows Terminal/PowerShell 7+
+  on Windows). Press `q`, `Esc`, or `Ctrl+C` to exit and restore the
+  terminal.
+- **floating** -- Opens a dedicated OS window:
+  - Windows: `wt.exe` (Windows Terminal) with PowerShell fallback
+  - macOS: `Terminal.app` via `osascript`
+  - Linux: `gnome-terminal`, `konsole`, or `xterm`
+
+## AI Agent Hooks
+
+Wire devBuddy into your AI coding tools so it reacts when an agent submits a
+prompt, uses a tool, edits a file, or finishes a turn.
+
+```bash
+devbuddy agent install --tool claude         # ~/.claude/settings.json
+devbuddy agent install --tool cursor         # ./.cursor/hooks.json
+devbuddy agent install --tool cursor --global  # ~/.cursor/hooks.json
+devbuddy agent status                        # show install state per tool
+devbuddy agent uninstall --tool claude
+```
+
+**Claude Code** -- Merges into `~/.claude/settings.json`. Installs hooks for
+`UserPromptSubmit`, `PreToolUse`, `PostToolUse` (Edit/Write/MultiEdit), and
+`Stop`. Uninstall only removes devBuddy's entries; any other hooks you
+configured are preserved.
+
+**Cursor** -- Merges into `.cursor/hooks.json` (project-local by default, or
+`~/.cursor/hooks.json` with `--global`). Installs hooks for
+`beforeSubmitPrompt`, `beforeShellExecution`, `afterFileEdit`, and `stop`.
+
+**GitHub Copilot CLI** -- `gh copilot` does not expose native hooks. Instead
+run Copilot through the devBuddy wrapper:
+
+```bash
+devbuddy copilot suggest "write a bash loop"
+devbuddy copilot explain "ls -lah"
+```
+
+The wrapper sends `prompt_submit` on start and `complete`/`error` on exit,
+tagged with `source: "copilot"`.
+
 ## CLI Reference
 
 ```
 devbuddy setup                 # Interactive first-time setup
-devbuddy start                 # Start daemon + launch TUI
-devbuddy ui                    # Launch TUI display client
+devbuddy start [--mode ...]    # Start daemon + launch display
+devbuddy ui [--mode ...]       # Launch display (pane | overlay | floating)
 
 devbuddy daemon start          # Start background daemon
 devbuddy daemon stop           # Stop daemon
@@ -90,6 +152,12 @@ devbuddy daemon restart        # Restart daemon
 devbuddy hook init <shell>     # Output hook script (for eval)
 devbuddy hook install          # Auto-install hook to shell config
 devbuddy hook uninstall        # Remove hook from shell config
+
+devbuddy agent install --tool <claude|cursor|copilot> [--global]
+devbuddy agent uninstall --tool <claude|cursor|copilot> [--global]
+devbuddy agent status          # Show which agent hooks are installed
+devbuddy agent-event --source ... --kind ...  # Used by hooks (one-shot)
+devbuddy copilot <args>        # Run `gh copilot <args>` under devBuddy
 
 devbuddy list                  # List available buddies
 devbuddy choose <name>         # Select a buddy

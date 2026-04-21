@@ -187,6 +187,21 @@ dialogue:
     - "Another chapter written in our project's history."
     - "Committed. The past is preserved, the future awaits."
     - "A commit is a promise to our future selves."
+  agentPrompt:
+    - "A question asked is a step toward understanding."
+    - "Let us see what the agent will do with this."
+  agentTool:
+    - "The agent reaches for a tool. Observe carefully."
+    - "Every tool use is a small experiment."
+  agentEdit:
+    - "The file is changed. Let us review it with fresh eyes."
+    - "An edit well-considered is worth many hasty lines."
+  agentComplete:
+    - "The turn is complete. Reflect before responding."
+    - "Pause. Read. Then decide what follows."
+  agentError:
+    - "The agent stumbled. We learn more from stumbles than strides."
+    - "A failure here is information, not defeat."
 
 levelUnlocks:
   2:

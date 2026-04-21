@@ -17,8 +17,34 @@ interface AppProps {
   client: DaemonClient;
 }
 
-const SPRITE_HEIGHT = 6;
-const SPEECH_HEIGHT = 5;
+// Hard floors so the layout can never collapse into itself.
+const MIN_SPRITE_HEIGHT = 4;
+const MIN_SPEECH_HEIGHT = 3;
+const MIN_TERM_COLS = 20;
+const MIN_TERM_ROWS = 10;
+
+function useTerminalSize(stdout: NodeJS.WriteStream | undefined) {
+  const [size, setSize] = useState({
+    cols: Math.max(stdout?.columns || 80, MIN_TERM_COLS),
+    rows: Math.max(stdout?.rows || 24, MIN_TERM_ROWS),
+  });
+
+  useEffect(() => {
+    if (!stdout) return;
+    const onResize = () => {
+      setSize({
+        cols: Math.max(stdout.columns || 80, MIN_TERM_COLS),
+        rows: Math.max(stdout.rows || 24, MIN_TERM_ROWS),
+      });
+    };
+    stdout.on("resize", onResize);
+    return () => {
+      stdout.off("resize", onResize);
+    };
+  }, [stdout]);
+
+  return size;
+}
 
 export function App({ client }: AppProps) {
   const { exit } = useApp();
@@ -29,8 +55,7 @@ export function App({ client }: AppProps) {
   const [events, setEvents] = useState<string[]>([]);
   const [showEvents, setShowEvents] = useState(false);
 
-  const termWidth = stdout?.columns || 80;
-  const isNarrow = termWidth < 60;
+  const { cols: termCols, rows: termRows } = useTerminalSize(stdout);
 
   useEffect(() => {
     const onMessage = (msg: OutboundMessage) => {
@@ -93,7 +118,7 @@ export function App({ client }: AppProps) {
 
   if (!connected) {
     return (
-      <Box flexDirection="column" padding={1}>
+      <Box flexDirection="column" padding={1} width={termCols}>
         <Text color="yellow">Connecting to devBuddy daemon...</Text>
         <Text dimColor>Make sure the daemon is running: devbuddy daemon start</Text>
       </Box>
@@ -102,29 +127,51 @@ export function App({ client }: AppProps) {
 
   if (!state) {
     return (
-      <Box flexDirection="column" padding={1}>
+      <Box flexDirection="column" padding={1} width={termCols}>
         <Text color="cyan">Waiting for buddy state...</Text>
       </Box>
     );
   }
 
-  const speechWidth = isNarrow ? termWidth - 6 : 40;
+  // Compute layout bounds so nothing overflows or overlaps when the user resizes.
+  // Budget: status(1) + sprite(h) + speech(h) + xp(1) + chat(3) + margins(~2) must
+  // fit in termRows; width must fit in termCols with some horizontal padding.
+  const contentWidth = Math.max(termCols - 4, 24);
+
+  const spriteHeightFromFrame = state.animation.frameLines.length || MIN_SPRITE_HEIGHT;
+  const spriteHeight = Math.min(
+    Math.max(spriteHeightFromFrame, MIN_SPRITE_HEIGHT),
+    Math.max(Math.floor(termRows * 0.35), MIN_SPRITE_HEIGHT),
+  );
+
+  // Speech gets the remaining vertical budget (after status/sprite/xp/chat), clamped.
+  const reservedForOther = 1 /* status */ + spriteHeight + 1 /* xp */ + 3 /* chat */ + 2 /* margins */;
+  const speechHeight = Math.max(
+    MIN_SPEECH_HEIGHT,
+    Math.min(6, termRows - reservedForOther),
+  );
+
+  const speechWidth = Math.min(contentWidth, 60);
 
   return (
-    <Box flexDirection="column" width="100%">
+    <Box flexDirection="column" width={termCols} height={termRows}>
       <StatusBar
         buddyName={state.buddy.name}
         level={state.progress.level}
         connected={connected}
       />
 
-      <Box flexDirection="column" alignItems="center" paddingX={1}>
-        <BuddyPanel frameLines={state.animation.frameLines} height={SPRITE_HEIGHT} />
+      <Box flexDirection="column" alignItems="center" paddingX={1} width={termCols}>
+        <BuddyPanel
+          frameLines={state.animation.frameLines}
+          height={spriteHeight}
+          maxWidth={contentWidth}
+        />
 
         <SpeechBubble
           text={state.speech}
           maxWidth={speechWidth}
-          reservedLines={SPEECH_HEIGHT}
+          reservedLines={speechHeight}
         />
 
         <XpBar

@@ -160,6 +160,21 @@ dialogue:
   gitCommit:
     - "committed. no going back now :3"
     - "another commit in the bag. your git log is looking spicy~"
+  agentPrompt:
+    - "ooh, giving the agent marching orders. bold."
+    - "new prompt dropped. watching with popcorn~"
+  agentTool:
+    - "tool use. i approve of this shenanigans."
+    - "*narrows eyes at the tool call*"
+  agentEdit:
+    - "file got edited. did you read it? READ IT."
+    - "diff ready. make sure the agent didn't 'fix' something that wasn't broken."
+  agentComplete:
+    - "turn complete. did the hooman approve? go on, approve."
+    - "agent bailed. i mean 'finished'. yeah."
+  agentError:
+    - "rip, agent crashed into the void. skill issue."
+    - "ya love to see it. another error for the collection."
 
 levelUnlocks:
   2:

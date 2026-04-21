@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Three display modes selectable via `devbuddy ui --mode <pane|overlay|floating>` (persisted in `config.yaml` at `displayMode`):
+  - **Pane mode** — hardened Ink TUI that clamps sprite and speech widths against terminal columns and reserves fixed rows so layout never overlaps user typing on resize
+  - **Overlay mode** — renders into a reserved top/bottom region of the current shell using a DEC scroll region (`CSI top;bottom r`) plus diffed per-row repainting and `SIGWINCH` handling; teardown restores the scroll region, clears the region rows, and shows the cursor
+  - **Floating mode** — spawns a detached OS terminal window (Windows Terminal/PowerShell/cmd, macOS `Terminal.app`, or Linux `gnome-terminal`/`konsole`/`xterm`) running pane mode against the shared daemon
+- `--anchor <top|bottom>` and `--height <rows>` flags for overlay mode
+- AI agent awareness via native hooks:
+  - New `agent_event` IPC message type with `source` (`claude`/`cursor`/`copilot`), `kind` (`prompt_submit`/`tool_use`/`file_edit`/`complete`/`error`/`stop`), plus optional `tool`, `file`, `summary`, `exit`
+  - `devbuddy agent install/uninstall/status --tool <claude|cursor|copilot>` commands; Claude writer merges into `~/.claude/settings.json`, Cursor writer merges into `.cursor/hooks.json` (project) or `~/.cursor/hooks.json` (`--global`), all idempotent and preserving existing non-devBuddy entries
+  - `devbuddy agent-event` one-shot command used by hook scripts; fails silently so missing daemon never breaks the host tool
+  - `devbuddy copilot <args>` wrapper for GitHub Copilot CLI (which has no native hooks) — emits `prompt_submit` on start and `complete`/`error` on exit tagged as `source: "copilot"`
+  - New `agent:*` pattern-match reactions wired to default `agentPrompt`/`agentTool`/`agentEdit`/`agentComplete`/`agentError` dialogue categories
+- Optional `appearance.overlay.{preferredAnchor, padding}` hints in buddy YAML for overlay mode
+- Sample `agentPrompt`/`agentTool`/`agentEdit`/`agentComplete`/`agentError` dialogue for sage, pixel, spark, and glitch buddies
+- `documentation/BUDDIES.md` authoring guide (schema, layout rules, dialogue categories including agent ones, contributor checklist)
+- Unit tests for overlay renderer ANSI output and region math, Claude/Cursor hook writers (idempotency + preservation), agent-event protocol round-trip, schema overlay/agent-category validation, and `agent:*` reaction mappings
 - `devbuddy watch <command>` wraps any command, streams its stdout/stderr line-by-line to the daemon as `output` events, and sends the final exit code; enables the buddy to react to actual test results, build errors, and runtime output in real time
 - Command-name pattern rules in `PatternMatcher` for common CLI commands: `npm test`, `git commit`, `npm run build`, `git push`, `docker`, and more
 - Generic success reaction (`generic:success`) so the buddy responds to every command, not just pattern-matched ones
@@ -15,6 +30,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All command paths (pattern-matched, fallback success, fallback error) now emit `event` messages for the TUI event log
 
 ### Changed
+- Orchestrator tick interval reduced from 250 ms (~4 fps) to 100 ms (~10 fps) for smoother ASCII animation; autosave/idle/sleep/shutdown timers remain decoupled from the tick and the "broadcast only on frame or speech change" guard keeps IPC traffic low
+- `appearance` in `BuddyDefinition` now accepts an optional `overlay` object (`preferredAnchor`, `padding`); existing buddies remain valid
+- Buddy definition schema now accepts any dialogue categories (including `agentPrompt`/`agentTool`/`agentEdit`/`agentComplete`/`agentError`); only `greetings` remains required
+- `SpeechBubble` breaks words longer than the inner width instead of overflowing; clamps `maxWidth` to safe bounds
+- `BuddyPanel` truncates frame lines to `maxWidth` so wide art never wraps into an adjacent row
+- Pane mode (`App`) now listens to `stdout.resize` and recomputes sprite/speech/chat layout bounds against current terminal columns and rows
 - TUI layout changed from horizontal (buddy + side event panel) to vertical stacked layout for better appearance in narrow split terminals
 - Recent Events panel is now toggled with `[e]` key instead of always visible, eliminating dead space
 - Daemon only broadcasts state to TUI clients when animation frame, animation state, or speech actually changes (was: every tick at 4fps regardless of changes), reducing flicker and unnecessary redraws

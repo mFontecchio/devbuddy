@@ -5,6 +5,7 @@ import {
   serialize,
   type InboundMessage,
   type OutboundMessage,
+  type AgentEvent,
 } from "./protocol.js";
 
 export class DaemonClient extends EventEmitter {
@@ -94,6 +95,10 @@ export class DaemonClient extends EventEmitter {
 
   sendCommand(cmd: string, exitCode: number, cwd: string): void {
     this.send({ type: "cmd", cmd, exit: exitCode, cwd, timestamp: Date.now() });
+  }
+
+  sendAgentEvent(event: Omit<AgentEvent, "type" | "timestamp">): void {
+    this.send({ type: "agent_event", timestamp: Date.now(), ...event });
   }
 
   chooseBuddy(buddyId: string): void {

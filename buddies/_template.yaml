@@ -8,8 +8,13 @@ description: "A brief description of your buddy"
 version: 1
 
 appearance:
-  width: 16           # Max character width of ASCII art
-  height: 7           # Max line count of ASCII art
+  width: 16           # Max character width of ASCII art (1-40)
+  height: 7           # Max line count of ASCII art (1-20)
+
+  # Optional: hints for overlay display mode.
+  overlay:
+    preferredAnchor: bottom   # top | bottom (where the buddy docks in the terminal)
+    padding: 1                # Extra blank rows inside the overlay region
 
 # Stats range from 1-10
 stats:
@@ -25,11 +30,12 @@ personality:
   speechStyle: "Describe how your buddy talks."
   catchphrase: "Something catchy!"
 
-# Animations - 'idle' is required, others are optional
-# Available states: idle, happy, sad, thinking, celebrating, sleeping
+# Animations - 'idle' is required, others are optional.
+# Common states the engine uses: idle, happy, sad, thinking, celebrating, sleeping.
+# You may define additional states and reference them via level unlocks.
 animations:
   idle:
-    frameDuration: 600  # ms per frame
+    frameDuration: 600  # ms per frame (min 50)
     loop: true
     frames:
       - |
@@ -47,7 +53,21 @@ animations:
       - |
         Happy frame
 
-# Dialogue categories - 'greetings' is required
+# Dialogue categories - 'greetings' is required.
+#
+# Engine-recognized categories:
+#   Terminal / shell:
+#     greetings, farewell, idle, encouragement, testPass, testFail,
+#     error, levelUp, gitCommit
+#   AI agents (Claude, Cursor, Copilot):
+#     agentPrompt     — user submits a prompt to an agent
+#     agentTool       — agent invokes a tool (Edit, Bash, etc.)
+#     agentEdit       — agent edits a file
+#     agentComplete   — agent finishes a turn
+#     agentError      — agent turn failed
+#
+# Unknown categories are accepted too; the engine just won't auto-select them,
+# but level unlocks and chat responses can reference them.
 dialogue:
   greetings:
     - "Hello!"
@@ -67,6 +87,18 @@ dialogue:
     - "Goodbye!"
   gitCommit:
     - "Nice commit!"
+
+  # Agent-aware dialogue (optional)
+  agentPrompt:
+    - "Thinking about your prompt..."
+  agentTool:
+    - "Running a tool for you."
+  agentEdit:
+    - "Nice edit!"
+  agentComplete:
+    - "All done."
+  agentError:
+    - "That didn't go well."
 
 # Optional: unlocks at specific levels
 levelUnlocks:

@@ -180,6 +180,21 @@ dialogue:
   gitCommit:
     - "COMMITTED! History recorded at LIGHT SPEED!"
     - "Another commit! We're UNSTOPPABLE!"
+  agentPrompt:
+    - "PROMPT FIRED! Let's GO!"
+    - "Agent engaged! Turbo mode ACTIVATED!"
+  agentTool:
+    - "TOOL USE! Things are HAPPENING!"
+    - "BZZT! The agent is moving! Keep up!"
+  agentEdit:
+    - "FILE EDITED! I can feel the new code TINGLING!"
+    - "Fresh diff! Fresh diff! Look look LOOK!"
+  agentComplete:
+    - "AGENT DONE! What's NEXT?! Let's KEEP GOING!"
+    - "Task complete! NEXT TASK NEXT TASK!"
+  agentError:
+    - "ERROR?! Quick, let's FIX IT FIX IT FIX IT!"
+    - "Stumbled?! That's OKAY! Bounce back at MAX SPEED!"
 
 levelUnlocks:
   2:

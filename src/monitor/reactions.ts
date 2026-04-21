@@ -31,6 +31,14 @@ const REACTION_MAP: Record<string, Reaction> = {
 
   // Fallback reactions (used by orchestrator for exit-code-based handling)
   "generic:success": { animation: "happy", dialogueCategory: "encouragement", xp: 3 },
+
+  // Agent reactions (from native hooks for Claude, Cursor, Copilot)
+  "agent:prompt": { animation: "thinking", dialogueCategory: "agentPrompt", xp: 2 },
+  "agent:tool": { animation: "thinking", dialogueCategory: "agentTool", xp: 1 },
+  "agent:edit": { animation: "happy", dialogueCategory: "agentEdit", xp: 5 },
+  "agent:complete": { animation: "happy", dialogueCategory: "agentComplete", xp: 10 },
+  "agent:error": { animation: "sad", dialogueCategory: "agentError", xp: 2 },
+  "agent:stop": { animation: "idle", dialogueCategory: "agentComplete", xp: 1 },
 };
 
 export function getReaction(event: string): Reaction | undefined {

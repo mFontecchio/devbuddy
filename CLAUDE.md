@@ -33,9 +33,9 @@ User's Terminal          Daemon Process           Display Terminal
 └──────────────┘        └──────────────┘        └──────────────┘
 ```
 
-**Orchestrator (`src/daemon/orchestrator.ts`)** is the central brain. It owns the tick loop (4fps), buddy instance, pattern matcher, XP tracker, dialogue engine, and state broadcasting. The lifecycle: receive IPC events -> match patterns -> trigger buddy reactions -> broadcast state to display clients.
+**Orchestrator (`src/daemon/orchestrator.ts`)** is the central brain. It owns the tick loop (~10 fps / 100 ms), buddy instance, pattern matcher, XP tracker, dialogue engine, and state broadcasting. The lifecycle: receive IPC events -> match patterns -> trigger buddy reactions -> broadcast state to display clients.
 
-**IPC Protocol (`src/daemon/protocol.ts`)** — JSON-over-newline messages. Inbound: `cmd`, `output`, `chat`, `subscribe`, `choose_buddy`, `ping`, `stop`. Outbound: `state`, `chat_response`, `event`, `pong`, `error`, `buddy_list`.
+**IPC Protocol (`src/daemon/protocol.ts`)** — JSON-over-newline messages. Inbound: `cmd`, `output`, `agent_event`, `chat`, `subscribe`, `choose_buddy`, `ping`, `stop`. Outbound: `state`, `chat_response`, `event`, `pong`, `error`, `buddy_list`.
 
 **DaemonServer (`src/daemon/server.ts`)** — `net.Server` on Unix socket or named pipe. Manages client connections, message parsing, and broadcasting.
 
@@ -47,9 +47,18 @@ User's Terminal          Daemon Process           Display Terminal
 - `Animator` manages frame-based animation state machines. Animations can loop or play-once with `returnTo` transitions.
 - Required: `idle` animation and `greetings` dialogue category. Stats are 1-10 integers.
 
-**TUI (`src/ui/`):**
-- Built with Ink (React for terminals). `App` component subscribes to daemon state, renders `BuddyPanel`, `SpeechBubble`, `XpBar`, `StatusBar`, `EventLog`, and `ChatInput`.
-- Chat happens in the TUI, not by intercepting the user's shell stdin.
+**Display (`src/ui/`):** Three interchangeable renderers selected via `devbuddy ui --mode <pane|overlay|floating>` (persisted in `config.yaml`).
+- **Pane** (`app.tsx`) — Ink TUI. `App` subscribes to daemon state, renders `BuddyPanel`, `SpeechBubble`, `XpBar`, `StatusBar`, `EventLog`, and `ChatInput`. Uses a `useTerminalSize` hook to clamp sprite/speech/chat against live terminal dimensions.
+- **Overlay** (`overlay.ts`, `overlay-renderer.ts`) — Reserves a top or bottom region in the user's shell via a DEC scroll region (`CSI top;bottom r`). Diffs rows and writes only what changed so typing is never disturbed. `overlay-renderer.ts` is a pure module (no TTY) and unit-tested.
+- **Floating** (`floating.ts`) — Spawns a detached OS terminal window running `devbuddy ui --mode pane` (`wt.exe` / `osascript` / `gnome-terminal`).
+
+Chat happens in the TUI/overlay, not by intercepting the user's shell stdin.
+
+**Agent Hooks (`src/hooks/agents/`):** Native integrations for AI coding tools. Each writer is idempotent and marker-tagged so uninstall preserves any user-added entries.
+- `claude.ts` merges into `~/.claude/settings.json` (UserPromptSubmit, PreToolUse, PostToolUse, Stop).
+- `cursor.ts` merges into `.cursor/hooks.json` or `~/.cursor/hooks.json` (beforeSubmitPrompt, beforeShellExecution, afterFileEdit, stop).
+- `copilot.ts` is a placeholder; Copilot CLI is integrated via the `devbuddy copilot <args>` wrapper command.
+- All hooks run `devbuddy agent-event --source ... --kind ...`, a one-shot client that sends a single `agent_event` to the daemon and exits.
 
 **Monitor (`src/monitor/`):**
 - `PatternMatcher` runs terminal output lines (received via IPC) against regex rules (test pass/fail, build errors, git commits, etc.) with 3-second cooldowns per event type.
@@ -66,7 +75,7 @@ User's Terminal          Daemon Process           Display Terminal
 - `bash.sh`, `zsh.sh`, `fish.fish`, `powershell.ps1` — Pure shell scripts, ~15 lines each.
 - `init.ts` — Generates hook scripts, detects shell, manages install/uninstall of eval lines in shell configs.
 
-**CLI (`src/cli.ts`):** Commander-based with subcommands: `setup`, `start`, `daemon start|stop|status|restart`, `ui`, `hook init|install|uninstall`, `list`, `choose <name>`, `status`.
+**CLI (`src/cli.ts`):** Commander-based. Subcommands: `setup`, `start [--mode]`, `ui [--mode --anchor --height]`, `daemon start|stop|status|restart`, `hook init|install|uninstall`, `agent install|uninstall|status --tool <claude|cursor|copilot> [--global]`, `agent-event --source --kind` (one-shot, used by agent hooks), `copilot <args>` (gh copilot wrapper), `list`, `choose <name>`, `status`.
 
 ## Key conventions
 

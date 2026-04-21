@@ -207,6 +207,21 @@ dialogue:
     - "Nice commit! History is being written!"
     - "Committed! Your future self will thank you!"
     - "Another one for the log!"
+  agentPrompt:
+    - "New prompt incoming! Engaging cooperative mode!"
+    - "Let's see what our AI buddy cooks up!"
+  agentTool:
+    - "Tool use detected! Beep boop!"
+    - "Watching the agent work. This is fun!"
+  agentEdit:
+    - "File edit complete! Don't forget to review!"
+    - "New pixels on the screen! Looking good!"
+  agentComplete:
+    - "Agent turn done! Ready for the next one!"
+    - "Task complete! High-five!"
+  agentError:
+    - "Yikes, the agent hit a snag. Let's try again!"
+    - "Red light! Let's figure out what happened."
 
 levelUnlocks:
   2:
