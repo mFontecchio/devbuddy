@@ -18,7 +18,7 @@ User's Terminal          Daemon Process           Display Terminal
 - **Animated ASCII buddies** — Frame-based animation state machines with idle, happy, sad, thinking, celebrating, and sleeping states
 - **Shell-aware reactions** — Detects test passes/failures, build errors, git commits, and more via lightweight shell hooks
 - **AI-agent aware** — Native hooks for Claude Code and Cursor, plus a `gh copilot` wrapper, so your buddy reacts to prompts, tool use, file edits, and turn completions
-- **Three display modes** — Pane (separate terminal), overlay (reserved region in your current terminal), or floating (dedicated OS window)
+- **Four display modes** — Pane (separate terminal), overlay (reserved region in your current terminal), floating (dedicated OS window), or chat REPL (single-terminal chat-first session, Claude CLI-style)
 - **Resize-safe TUI** — Sprite, speech bubble, and chat input clamp to the terminal's live width/height so nothing wraps or overlaps
 - **XP & leveling** — Earn experience from coding activity; unlock new dialogue, animations, and cosmetics as you level up
 - **Conversation system** — Chat with your buddy in the TUI; personality-weighted responses based on each buddy's traits
@@ -31,14 +31,60 @@ User's Terminal          Daemon Process           Display Terminal
 ```bash
 npm install devbuddy
 
-# Interactive setup — installs shell hooks and picks your first buddy
+# Interactive setup — installs shell hooks, picks your first buddy,
+# and opens the buddy in its own floating OS window so your working
+# terminals stay untouched.
 devbuddy setup
-
-# Start the daemon and open the TUI
-devbuddy start
 ```
 
-After setup, your buddy reacts to everything you do in the terminal automatically.
+After setup, your buddy reacts to everything you do in the terminal automatically — including `npm`, `git`, `claude`, and `devbuddy copilot`. Your normal working terminals are never taken over; the buddy lives in its own window by default.
+
+**Pick a different display mode anytime:**
+
+| Mode | Where the buddy renders | Best for |
+|---|---|---|
+| `floating` (default) | Dedicated OS window (Windows Terminal / Terminal.app / gnome-terminal) | Keeping your working shells pristine |
+| `overlay` | Reserved strip inside the terminal you're already in | Seeing the buddy next to the output of `npm run start` |
+| `pane` | Full-screen Ink TUI in a separate terminal pane | Dedicated tmux/Windows Terminal pane |
+
+```bash
+devbuddy ui --mode overlay     # show inside my current shell
+devbuddy ui --mode pane        # show in a second pane I control
+devbuddy ui --mode floating    # back to the default window
+```
+
+## Verify Your Setup
+
+Run `devbuddy doctor` at any time to confirm that the shell hook, daemon, and agent hooks are wired up correctly. Add `--watch <seconds>` to tail live events as you run commands in another terminal:
+
+```bash
+devbuddy doctor              # one-shot report
+devbuddy doctor --watch 15   # stream `cmd` and `agent_event` messages for 15s
+```
+
+Sample output:
+
+```
+  devBuddy Doctor
+  ───────────────
+
+  [OK]     Shell hook  (powershell)
+          config: C:\Users\you\Documents\PowerShell\Microsoft.PowerShell_profile.ps1
+
+  [OK]     Daemon
+          socket: \\.\pipe\devbuddy
+          uptime: 0h 4m 22s
+          connected clients: 1
+
+  Agent hooks
+  [OK]     claude   C:\Users\you\.claude\settings.json
+  [OK]     cursor   C:\Projects\app\.cursor\hooks.json
+  [NONE]   copilot  (placeholder; use `devbuddy copilot <args>`)
+
+  Recent events
+          14:52:32  cmd          exit 0  npm test
+          14:52:40  agent_event  claude/prompt_submit  claude explain this file
+```
 
 ## Requirements
 
@@ -50,6 +96,7 @@ After setup, your buddy reacts to everything you do in the terminal automaticall
 devbuddy setup                  # First-time interactive setup
 devbuddy start [--mode ...]     # Start daemon + launch display
 devbuddy ui [--mode ...]        # Launch display (pane | overlay | floating)
+devbuddy chat                   # Single-terminal chat REPL (Claude CLI-style)
 
 devbuddy daemon start           # Start the background daemon
 devbuddy daemon stop            # Stop the daemon
@@ -68,6 +115,7 @@ devbuddy copilot <args>         # Run `gh copilot <args>` under devBuddy
 devbuddy list                   # List available buddies
 devbuddy choose <name>          # Switch to a different buddy
 devbuddy status                 # Show buddy stats and daemon status
+devbuddy doctor [--watch N]     # Verify hook + daemon + agent wiring end-to-end
 ```
 
 See [documentation/INSTALLATION.md](documentation/INSTALLATION.md) for full CLI reference and display-mode details.
@@ -127,9 +175,9 @@ See [documentation/BUDDIES.md](documentation/BUDDIES.md) for the full authoring 
 2. **Daemon** — A background Node.js process that owns all buddy state. It runs a pattern matcher against incoming events, triggers buddy reactions (animation changes, dialogue, XP awards), and broadcasts state updates to connected display clients. Auto-shuts down after 3 hours of inactivity.
 
 3. **Display** — Choose one of three renderers:
-   - **Pane** — Ink (React for CLI) app in its own terminal pane (default)
+   - **Floating** — Dedicated OS window spawned via `wt.exe` / `osascript` / `gnome-terminal` (default)
    - **Overlay** — Reserved region in your current terminal (VT100 scroll region)
-   - **Floating** — Dedicated OS window spawned via `wt.exe` / `osascript` / `gnome-terminal`
+   - **Pane** — Ink (React for CLI) app in its own terminal pane
 
 4. **Agent hooks (optional)** — Native hook integrations for Claude Code and Cursor, plus a `gh copilot` wrapper, so agent prompts, tool use, file edits, and turn completions also feed the daemon.
 

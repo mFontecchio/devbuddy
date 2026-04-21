@@ -38,6 +38,10 @@ export interface StopMessage {
   type: "stop";
 }
 
+export interface GetRecentEventsMessage {
+  type: "get_recent_events";
+}
+
 export type AgentSource = "claude" | "cursor" | "copilot";
 
 export type AgentEventKind =
@@ -67,7 +71,8 @@ export type InboundMessage =
   | ChooseBuddyMessage
   | PingMessage
   | StopMessage
-  | AgentEvent;
+  | AgentEvent
+  | GetRecentEventsMessage;
 
 // --- Outbound messages (daemon -> display clients) ---
 
@@ -122,13 +127,44 @@ export interface BuddyListMessage {
   }>;
 }
 
+/**
+ * A compact record of an event observed by the daemon. Used by the
+ * `devbuddy doctor` command to prove end-to-end wiring from shell and
+ * agent hooks without exposing full event internals.
+ */
+export interface RecentEventRecord {
+  ts: number;
+  kind: "cmd" | "output" | "agent_event";
+  source?: AgentSource;
+  subKind?: AgentEventKind;
+  summary: string;
+  exit?: number;
+}
+
+export interface RecentEventsMessage {
+  type: "recent_events";
+  events: RecentEventRecord[];
+}
+
+/**
+ * Live notification pushed to subscribers whenever a new event is
+ * captured by the daemon's ring buffer. Lets `devbuddy doctor --watch`
+ * stream events as they happen.
+ */
+export interface RecentEventNotification {
+  type: "recent_event";
+  event: RecentEventRecord;
+}
+
 export type OutboundMessage =
   | BuddyStateUpdate
   | ChatResponseMessage
   | EventNotification
   | PongMessage
   | ErrorMessage
-  | BuddyListMessage;
+  | BuddyListMessage
+  | RecentEventsMessage
+  | RecentEventNotification;
 
 // --- Serialization helpers ---
 

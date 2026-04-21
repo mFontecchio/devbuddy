@@ -54,6 +54,7 @@ export function App({ client }: AppProps) {
   const [chatMode, setChatMode] = useState(false);
   const [events, setEvents] = useState<string[]>([]);
   const [showEvents, setShowEvents] = useState(false);
+  const [chatLog, setChatLog] = useState<string[]>([]);
 
   const { cols: termCols, rows: termRows } = useTerminalSize(stdout);
 
@@ -66,8 +67,13 @@ export function App({ client }: AppProps) {
         case "event":
           setEvents((prev) => [...prev.slice(-9), (msg as EventNotification).event]);
           break;
-        case "chat_response":
+        case "chat_response": {
+          const text = (msg as { text: string }).text;
+          if (text) {
+            setChatLog((prev) => [...prev.slice(-9), `buddy: ${text}`]);
+          }
           break;
+        }
       }
     };
 
@@ -108,8 +114,10 @@ export function App({ client }: AppProps) {
 
   const handleChatSubmit = useCallback(
     (text: string) => {
-      if (text.trim()) {
-        client.sendChat(text.trim());
+      const trimmed = text.trim();
+      if (trimmed) {
+        setChatLog((prev) => [...prev.slice(-9), `you: ${trimmed}`]);
+        client.sendChat(trimmed);
       }
       setChatMode(false);
     },
@@ -186,6 +194,15 @@ export function App({ client }: AppProps) {
         <Box flexDirection="column" borderStyle="round" borderColor="gray" paddingX={1} marginX={1}>
           <Text bold dimColor>Recent Events</Text>
           <EventLog events={events} />
+        </Box>
+      )}
+
+      {chatLog.length > 0 && (
+        <Box flexDirection="column" borderStyle="round" borderColor="gray" paddingX={1} marginX={1}>
+          <Text bold dimColor>Chat</Text>
+          {chatLog.slice(-5).map((line, i) => (
+            <Text key={i} dimColor={line.startsWith("you:")}>{line}</Text>
+          ))}
         </Box>
       )}
 

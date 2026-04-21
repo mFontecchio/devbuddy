@@ -3,6 +3,7 @@ import type {
   InboundMessage,
   BuddyStateUpdate,
   AgentEvent,
+  RecentEventRecord,
 } from "./protocol.js";
 import { eventBus } from "../core/events.js";
 import { initLogger, log, closeLogger } from "../utils/logger.js";
@@ -29,6 +30,7 @@ const IDLE_TIMEOUT_MS = 30_000;
 const SLEEP_TIMEOUT_MS = 300_000;
 const AUTOSAVE_INTERVAL_MS = 60_000;
 const INACTIVITY_SHUTDOWN_MS = 3 * 60 * 60 * 1000; // 3 hours
+const RECENT_EVENTS_CAP = 20;
 
 export class Orchestrator {
   private config: DevBuddyConfig;
@@ -52,6 +54,8 @@ export class Orchestrator {
 
   private currentSpeech: string | null = null;
   private speechTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  private recentEvents: RecentEventRecord[] = [];
 
   constructor(config?: Partial<DevBuddyConfig>) {
     this.config = loadConfig(config);
@@ -263,16 +267,51 @@ export class Orchestrator {
         });
         break;
 
+      case "get_recent_events":
+        this.server.send(client, {
+          type: "recent_events",
+          events: [...this.recentEvents],
+        });
+        break;
+
       case "stop":
         this.stop();
         break;
     }
   }
 
+  /**
+   * Push a record into the fixed-size recent-events ring buffer and
+   * broadcast it to subscribers so `devbuddy doctor --watch` can tail.
+   * Public so tests can verify ring-buffer behavior in isolation.
+   */
+  recordEvent(record: RecentEventRecord): void {
+    this.recentEvents.push(record);
+    if (this.recentEvents.length > RECENT_EVENTS_CAP) {
+      this.recentEvents.splice(0, this.recentEvents.length - RECENT_EVENTS_CAP);
+    }
+    this.server.broadcast({ type: "recent_event", event: record });
+  }
+
+  /**
+   * Read-only accessor for the recent-events ring buffer. Intended for
+   * unit tests; the daemon streams events to clients via IPC.
+   */
+  getRecentEvents(): ReadonlyArray<RecentEventRecord> {
+    return this.recentEvents;
+  }
+
   private handleCommandEvent(cmd: string, exitCode: number, cwd: string): void {
     this.resetIdleTimer();
     this.context.addEvent("terminal:output");
     log("debug", `Command event: exit=${exitCode}`, { cmd: cmd.slice(0, 100) });
+
+    this.recordEvent({
+      ts: Date.now(),
+      kind: "cmd",
+      summary: cmd.slice(0, 200),
+      exit: exitCode,
+    });
 
     if (this.buddy) {
       this.buddy.progress.totalCommands++;
@@ -297,6 +336,13 @@ export class Orchestrator {
 
     const match = this.patternMatcher.match(line);
     if (match) {
+      // Only record output lines the pattern matcher actually reacts to
+      // so the ring buffer isn't flooded with stdout noise.
+      this.recordEvent({
+        ts: Date.now(),
+        kind: "output",
+        summary: `[${match.event}] ${line.slice(0, 180)}`,
+      });
       this.handlePatternMatch(match.event);
     }
   }
@@ -310,6 +356,15 @@ export class Orchestrator {
       .filter(Boolean)
       .join(" ");
     log("debug", `Agent event: ${eventKey}`, { source: msg.source, detail: detail.slice(0, 120) });
+
+    this.recordEvent({
+      ts: Date.now(),
+      kind: "agent_event",
+      source: msg.source,
+      subKind: msg.kind,
+      summary: detail.slice(0, 200) || eventKey,
+      exit: msg.exit,
+    });
 
     this.handlePatternMatch(eventKey);
   }

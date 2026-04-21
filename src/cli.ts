@@ -23,7 +23,28 @@ import {
   type ShellType,
 } from "./hooks/init.js";
 import { AGENT_TOOLS, getAgentWriter, type AgentTool } from "./hooks/agents/index.js";
-import type { AgentEventKind, AgentSource } from "./daemon/protocol.js";
+import type {
+  AgentEventKind,
+  AgentSource,
+  RecentEventRecord,
+} from "./daemon/protocol.js";
+
+/**
+ * Format a RecentEventRecord for compact one-line display in the
+ * `devbuddy doctor` report.
+ */
+function formatEvent(ev: RecentEventRecord): string {
+  const time = new Date(ev.ts).toISOString().slice(11, 19);
+  if (ev.kind === "cmd") {
+    const exit = ev.exit === 0 ? "exit 0" : `exit ${ev.exit}`;
+    return `${time}  cmd          ${exit.padEnd(7)} ${ev.summary}`;
+  }
+  if (ev.kind === "agent_event") {
+    const label = `${ev.source || "?"}/${ev.subKind || "?"}`;
+    return `${time}  agent_event  ${label.padEnd(20)} ${ev.summary}`;
+  }
+  return `${time}  output       ${ev.summary}`;
+}
 
 /**
  * Poll the daemon's PID file / socket until it becomes available.
@@ -173,7 +194,7 @@ export function createCli(): Command {
     .action(async (opts) => {
       const { loadConfig, saveConfigPatch } = await import("./core/config.js");
       const cfg = loadConfig();
-      const rawMode = (opts.mode || cfg.displayMode || "pane").toLowerCase();
+      const rawMode = (opts.mode || cfg.displayMode || "floating").toLowerCase();
       const validModes = ["pane", "overlay", "floating"] as const;
       type ModeT = (typeof validModes)[number];
       const mode: ModeT = (validModes as readonly string[]).includes(rawMode)
@@ -471,14 +492,34 @@ export function createCli(): Command {
         }
       }
 
-      // 5. Instructions
-      console.log("  5. Setup complete!");
+      // 5. Launch the buddy in a floating window (new default)
+      let launchedFloating = false;
+      try {
+        const { launchFloating } = await import("./ui/floating.js");
+        const desc = launchFloating({ mode: "pane" });
+        console.log(`  5. Buddy window opened via ${desc}\n`);
+        launchedFloating = true;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.log(`  5. Could not open a floating window: ${message}`);
+        console.log("     Falling back to in-shell overlay mode.\n");
+      }
+
+      // 6. Instructions
+      console.log("  6. Setup complete!");
       console.log();
-      console.log("     Open a second terminal pane and run:");
-      console.log("       devbuddy ui");
+      if (launchedFloating) {
+        console.log("     The buddy is now running in its own window.");
+        console.log("     Your working terminals stay untouched — just use them normally.");
+      } else {
+        console.log("     Run the buddy inside your current terminal:");
+        console.log("       devbuddy ui --mode overlay");
+      }
       console.log();
-      console.log("     Restart your shell to activate the hook.");
-      console.log("     Then use your terminal normally.\n");
+      console.log("     Prefer the buddy inside the shell you're working in?");
+      console.log("       devbuddy ui --mode overlay");
+      console.log();
+      console.log("     Restart your shell to activate the command hook.\n");
     });
 
   // --- start (legacy / convenience) ---
@@ -506,7 +547,9 @@ export function createCli(): Command {
         }
       }
 
-      const mode = (opts.mode || "pane").toLowerCase();
+      const { loadConfig } = await import("./core/config.js");
+      const cfg = loadConfig();
+      const mode = (opts.mode || cfg.displayMode || "floating").toLowerCase();
       if (mode === "overlay") {
         const { launchOverlay } = await import("./ui/overlay.js");
         const anchor = opts.anchor === "top" ? "top" : "bottom";
@@ -522,6 +565,50 @@ export function createCli(): Command {
 
       const { launchUI } = await import("./ui/index.js");
       await launchUI();
+    });
+
+  // --- chat (single-terminal chat-first REPL, Claude CLI-style) ---
+  program
+    .command("chat")
+    .description("Open a single-terminal chat REPL with your buddy")
+    .option("-b, --buddy <name>", "Choose a specific buddy by name")
+    .option("--debug", "Enable debug logging on the daemon")
+    .action(async (opts) => {
+      if (!DaemonServer.isDaemonRunning()) {
+        console.log("Starting daemon...");
+        const args = ["daemon", "start", "--foreground"];
+        if (opts.debug) args.push("--debug");
+        if (opts.buddy) args.push("--buddy", opts.buddy);
+
+        const child = spawnSelf(args);
+        child.unref();
+        const ok = await waitForDaemon(10000);
+        if (!ok) {
+          console.warn(
+            "Daemon did not come up within 10s; launching chat anyway. " +
+              "The REPL will reconnect automatically once the daemon is ready.",
+          );
+          console.warn(
+            "If it never connects, run `devbuddy daemon start --foreground` " +
+              "in another terminal to see startup errors.",
+          );
+        }
+      }
+
+      if (opts.buddy && DaemonServer.isDaemonRunning()) {
+        try {
+          const client = new DaemonClient();
+          await client.connect(false);
+          client.chooseBuddy(opts.buddy);
+          await new Promise((r) => setTimeout(r, 100));
+          client.disconnect();
+        } catch {
+          // Non-fatal; the REPL will still launch with the active buddy.
+        }
+      }
+
+      const { launchChatRepl } = await import("./ui/chat-repl-entry.js");
+      await launchChatRepl();
     });
 
   // --- watch (run a command and stream output to daemon) ---
@@ -661,6 +748,134 @@ export function createCli(): Command {
       } catch {
         // Daemon not running — preference saved, will apply on next start
       }
+    });
+
+  // --- doctor (diagnostic + live event tap) ---
+  program
+    .command("doctor")
+    .description("Verify shell hook, daemon, and agent hook wiring end-to-end")
+    .option(
+      "-w, --watch <seconds>",
+      "After the report, stream live events for N seconds so you can verify in another terminal",
+    )
+    .action(async (opts) => {
+      const shell = detectShell();
+      const shellConfigPath = getShellConfigPath(shell);
+      const hookInstalled = isHookInstalled(shell);
+
+      console.log("\n  devBuddy Doctor");
+      console.log("  " + "\u2500".repeat(15) + "\n");
+
+      // --- 1. Shell hook ---
+      const hookMark = hookInstalled ? "OK" : "MISSING";
+      console.log(`  [${hookMark}] Shell hook  (${shell})`);
+      console.log(`          config: ${shellConfigPath}`);
+      if (!hookInstalled) {
+        console.log("          fix: devbuddy hook install");
+      }
+      console.log();
+
+      // --- 2. Daemon ---
+      const daemonRunning = DaemonServer.isDaemonRunning();
+      const daemonMark = daemonRunning ? "OK" : "STOPPED";
+      console.log(`  [${daemonMark}] Daemon`);
+      console.log(`          socket: ${DaemonServer.getSocketPath()}`);
+
+      let daemonClient: DaemonClient | null = null;
+      if (daemonRunning) {
+        try {
+          daemonClient = new DaemonClient();
+          await daemonClient.connect(false);
+          const pongPromise = new Promise<{ uptime: number; clients: number } | null>(
+            (resolve) => {
+              const timer = setTimeout(() => resolve(null), 2000);
+              daemonClient!.once("pong", (msg: any) => {
+                clearTimeout(timer);
+                resolve({ uptime: msg.uptime, clients: msg.clients });
+              });
+            },
+          );
+          daemonClient.ping();
+          const pong = await pongPromise;
+          if (pong) {
+            const seconds = Math.floor(pong.uptime / 1000);
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = seconds % 60;
+            console.log(`          uptime: ${h}h ${m}m ${s}s`);
+            console.log(`          connected clients: ${pong.clients}`);
+          } else {
+            console.log("          warning: daemon did not respond to ping within 2s");
+          }
+        } catch (err) {
+          console.log(
+            `          warning: could not reach daemon (${err instanceof Error ? err.message : String(err)})`,
+          );
+          try { daemonClient?.disconnect(); } catch { /* ignore */ }
+          daemonClient = null;
+        }
+      } else {
+        console.log("          fix: devbuddy daemon start");
+      }
+      console.log();
+
+      // --- 3. Agent hooks ---
+      console.log("  Agent hooks");
+      for (const tool of AGENT_TOOLS) {
+        const writer = getAgentWriter(tool);
+        const installed = writer.isInstalled();
+        const mark = installed ? "OK" : "NONE";
+        console.log(`  [${mark}] ${tool.padEnd(8)} ${writer.configPath()}`);
+      }
+      console.log();
+
+      // --- 4. Recent events (snapshot) ---
+      if (daemonClient?.connected) {
+        const eventsPromise = new Promise<RecentEventRecord[]>((resolve) => {
+          const timer = setTimeout(() => resolve([]), 2000);
+          daemonClient!.once("recent_events", (msg: any) => {
+            clearTimeout(timer);
+            resolve(msg.events || []);
+          });
+        });
+        daemonClient.requestRecentEvents();
+        const events = await eventsPromise;
+        console.log("  Recent events");
+        if (events.length === 0) {
+          console.log("          (none yet — run a command or use an AI tool in another shell)");
+        } else {
+          for (const ev of events) {
+            console.log(`          ${formatEvent(ev)}`);
+          }
+        }
+        console.log();
+      }
+
+      // --- 5. Try-it hints ---
+      console.log("  Try it from another terminal:");
+      console.log("    npm run start          (shell hook -> cmd event)");
+      console.log("    claude                 (Claude Code hooks -> agent_event)");
+      console.log("    devbuddy copilot help  (Copilot wrapper -> agent_event)");
+      console.log();
+
+      // --- 6. Optional watch ---
+      const watchSeconds = opts.watch ? parseInt(opts.watch, 10) : 0;
+      if (watchSeconds > 0 && daemonClient?.connected) {
+        console.log(`  Watching for events for ${watchSeconds}s... (Ctrl+C to stop)\n`);
+        const onRecentEvent = (msg: any) => {
+          if (msg?.type === "recent_event" && msg.event) {
+            console.log(`  -> ${formatEvent(msg.event as RecentEventRecord)}`);
+          }
+        };
+        daemonClient.on("message", onRecentEvent);
+        // Subscribe so the daemon streams `recent_event` broadcasts to us
+        daemonClient.subscribe();
+        await new Promise((r) => setTimeout(r, watchSeconds * 1000));
+        daemonClient.off("message", onRecentEvent);
+        console.log("\n  Watch window ended.\n");
+      }
+
+      try { daemonClient?.disconnect(); } catch { /* ignore */ }
     });
 
   // --- status ---

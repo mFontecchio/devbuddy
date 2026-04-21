@@ -109,6 +109,10 @@ export class DaemonClient extends EventEmitter {
     this.send({ type: "ping" });
   }
 
+  requestRecentEvents(): void {
+    this.send({ type: "get_recent_events" });
+  }
+
   requestStop(): void {
     this.send({ type: "stop" });
   }

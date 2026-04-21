@@ -57,6 +57,7 @@ JSON-over-newline messages in both directions:
 | `subscribe` | -- | Display on connect |
 | `choose_buddy` | `buddyId` | CLI / TUI |
 | `ping` | -- | CLI status check |
+| `get_recent_events` | -- | `devbuddy doctor` |
 | `stop` | -- | CLI daemon stop |
 
 **Outbound (daemon -> display clients):**
@@ -69,6 +70,8 @@ JSON-over-newline messages in both directions:
 | `pong` | `uptime`, `clients` | On ping |
 | `error` | `message` | On error |
 | `buddy_list` | `buddies[]` | On subscribe |
+| `recent_events` | `events[]` (snapshot of ring buffer) | On `get_recent_events` |
+| `recent_event` | `event` (single record) | Broadcast on every new `cmd` / `output` match / `agent_event` |
 
 ### Orchestrator (`orchestrator.ts`)
 
@@ -80,6 +83,11 @@ Replaces the old `Engine` class. Responsibilities:
   `agent:prompt | agent:tool | agent:edit | agent:complete | agent:error | agent:stop` keys
 - Triggering buddy reactions (animation + dialogue + XP)
 - Broadcasting state to subscribed display clients only when frame or speech changes
+- Maintaining a fixed-size (20-entry) in-memory ring buffer of recent events
+  (`cmd`, pattern-matched `output`, and `agent_event`) and broadcasting a
+  `recent_event` notification on each push so `devbuddy doctor --watch` can
+  tail live traffic. A snapshot of the buffer is returned on
+  `get_recent_events`. Not persisted across daemon restarts.
 - Idle/sleep timers (30s idle quip, 5min sleep animation)
 - Auto-shutdown after 3 hours of inactivity
 - Autosave every 60 seconds (independent of the tick)
@@ -106,8 +114,10 @@ Design principles:
 ## Display Modes (`src/ui/`)
 
 Three interchangeable renderers consume the same `state` broadcast. Selected
-via `devbuddy ui --mode <pane|overlay|floating>` (persisted in
-`config.yaml` at `displayMode`).
+via `devbuddy ui --mode <floating|overlay|pane>` (persisted in
+`config.yaml` at `displayMode`). The shipped default is `floating` so the
+buddy never takes over a terminal the user is actively working in; `pane`
+and `overlay` remain fully supported opt-ins.
 
 ### Pane mode (`src/ui/app.tsx`)
 
@@ -177,6 +187,33 @@ marker-commented, and preserves existing user entries on install/uninstall.
 The `devbuddy agent-event` one-shot subcommand connects to the daemon, sends
 a single `agent_event`, then exits. It fails silently so a missing daemon
 never breaks the host tool.
+
+## Diagnostics (`devbuddy doctor`)
+
+The `doctor` command is the single entry point for verifying that the whole
+pipeline is wired up correctly. It touches every layer without mutating any
+state:
+
+1. **Shell hook** -- `detectShell()` + `isHookInstalled()` report whether the
+   user's shell config contains the marker-commented `devbuddy hook init`
+   line.
+2. **Daemon** -- `DaemonServer.isDaemonRunning()` checks the PID file; if
+   alive, a `ping` round-trip confirms the process is responsive and
+   reports uptime and connected client count.
+3. **Agent hooks** -- Iterates `AGENT_TOOLS` and calls each writer's
+   `isInstalled()` + `configPath()` so the user can see per-tool state
+   (Claude, Cursor, Copilot) in one place.
+4. **Recent events** -- Requests `get_recent_events` to display the last
+   ~20 `cmd` / `output` / `agent_event` records the daemon has observed.
+5. **Live tap** -- With `--watch <seconds>`, subscribes to the daemon and
+   prints each `recent_event` broadcast as it arrives, so running
+   `npm run start`, `claude`, or `devbuddy copilot help` in another
+   terminal produces visible output in the doctor session.
+
+The ring buffer that backs `get_recent_events` and `recent_event` is
+capped at 20 entries, in-memory only, and is populated from every `cmd`,
+every pattern-matched `output` line, and every `agent_event` that the
+orchestrator handles. It is never persisted to disk.
 
 ## Existing Subsystems (Unchanged)
 

@@ -47,7 +47,7 @@ User's Terminal          Daemon Process           Display Terminal
 - `Animator` manages frame-based animation state machines. Animations can loop or play-once with `returnTo` transitions.
 - Required: `idle` animation and `greetings` dialogue category. Stats are 1-10 integers.
 
-**Display (`src/ui/`):** Three interchangeable renderers selected via `devbuddy ui --mode <pane|overlay|floating>` (persisted in `config.yaml`).
+**Display (`src/ui/`):** Three interchangeable renderers selected via `devbuddy ui --mode <floating|overlay|pane>` (persisted in `config.yaml`). `floating` is the shipped default so the buddy renders in a dedicated OS terminal window instead of taking over a user shell.
 - **Pane** (`app.tsx`) — Ink TUI. `App` subscribes to daemon state, renders `BuddyPanel`, `SpeechBubble`, `XpBar`, `StatusBar`, `EventLog`, and `ChatInput`. Uses a `useTerminalSize` hook to clamp sprite/speech/chat against live terminal dimensions.
 - **Overlay** (`overlay.ts`, `overlay-renderer.ts`) — Reserves a top or bottom region in the user's shell via a DEC scroll region (`CSI top;bottom r`). Diffs rows and writes only what changed so typing is never disturbed. `overlay-renderer.ts` is a pure module (no TTY) and unit-tested.
 - **Floating** (`floating.ts`) — Spawns a detached OS terminal window running `devbuddy ui --mode pane` (`wt.exe` / `osascript` / `gnome-terminal`).
@@ -75,7 +75,7 @@ Chat happens in the TUI/overlay, not by intercepting the user's shell stdin.
 - `bash.sh`, `zsh.sh`, `fish.fish`, `powershell.ps1` — Pure shell scripts, ~15 lines each.
 - `init.ts` — Generates hook scripts, detects shell, manages install/uninstall of eval lines in shell configs.
 
-**CLI (`src/cli.ts`):** Commander-based. Subcommands: `setup`, `start [--mode]`, `ui [--mode --anchor --height]`, `daemon start|stop|status|restart`, `hook init|install|uninstall`, `agent install|uninstall|status --tool <claude|cursor|copilot> [--global]`, `agent-event --source --kind` (one-shot, used by agent hooks), `copilot <args>` (gh copilot wrapper), `list`, `choose <name>`, `status`.
+**CLI (`src/cli.ts`):** Commander-based. Subcommands: `setup` (auto-launches a floating buddy window at the end), `start [--mode]`, `ui [--mode --anchor --height]`, `chat`, `watch <command>`, `daemon start|stop|status|restart`, `hook init|install|uninstall`, `agent install|uninstall|status --tool <claude|cursor|copilot> [--global]`, `agent-event --source --kind` (one-shot, used by agent hooks), `copilot <args>` (gh copilot wrapper), `list`, `choose <name>`, `status`, `doctor [--watch <seconds>]` (verifies shell hook + daemon + agent hook wiring and can tail live events).
 
 ## Key conventions
 

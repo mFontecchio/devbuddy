@@ -21,7 +21,7 @@ export const DEFAULT_CONFIG: DevBuddyConfig = {
   speechBubbleDuration: 4000,
   buddiesDir: [],
   debugLog: false,
-  displayMode: "pane",
+  displayMode: "floating",
   overlayAnchor: "bottom",
   overlayHeight: 8,
 };

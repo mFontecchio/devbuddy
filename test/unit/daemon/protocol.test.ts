@@ -102,5 +102,50 @@ describe("protocol", () => {
       expect(msg).not.toBeNull();
       expect(msg!.type).toBe("choose_buddy");
     });
+
+    it("parses get_recent_events message", () => {
+      const raw = '{"type":"get_recent_events"}';
+      const msg = parseMessage(raw);
+      expect(msg).not.toBeNull();
+      expect(msg!.type).toBe("get_recent_events");
+    });
+  });
+
+  describe("recent events outbound messages", () => {
+    it("serializes a recent_events snapshot", () => {
+      const msg: OutboundMessage = {
+        type: "recent_events",
+        events: [
+          {
+            ts: 1700000000000,
+            kind: "cmd",
+            summary: "npm test",
+            exit: 0,
+          },
+        ],
+      };
+      const serialized = serialize(msg);
+      expect(serialized).toContain('"type":"recent_events"');
+      expect(serialized).toContain('"kind":"cmd"');
+      expect(serialized).toContain('"summary":"npm test"');
+      expect(serialized.endsWith("\n")).toBe(true);
+    });
+
+    it("serializes a recent_event live notification", () => {
+      const msg: OutboundMessage = {
+        type: "recent_event",
+        event: {
+          ts: 1700000000000,
+          kind: "agent_event",
+          source: "claude",
+          subKind: "prompt_submit",
+          summary: "claude prompt",
+        },
+      };
+      const serialized = serialize(msg);
+      expect(serialized).toContain('"type":"recent_event"');
+      expect(serialized).toContain('"source":"claude"');
+      expect(serialized).toContain('"subKind":"prompt_submit"');
+    });
   });
 });
